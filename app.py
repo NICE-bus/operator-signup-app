@@ -1,0 +1,817 @@
+"""
+Driver Signup App - Streamlit Tablet Interface
+Replaces physical clipboards with a digital signup system
+Date: December 31, 2025
+"""
+
+import streamlit as st
+import json
+import os
+from datetime import datetime, timedelta
+from typing import Dict, List
+import pandas as pd
+import gspread
+from google.oauth2.service_account import Credentials
+
+# App configuration
+st.set_page_config(
+    page_title="Operator Signup System",
+    page_icon="🚌",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# Custom CSS for tablet-friendly interface
+st.markdown("""
+<style>
+    .main-header {
+        text-align: center;
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #1f4e79;
+        margin-bottom: 1rem;
+    }
+    
+    /* Default button styling - smaller for navigation */
+    .stButton > button {
+        font-size: 1.2rem !important;
+        font-weight: bold !important;
+        padding: 15px 25px !important;
+        min-height: 60px !important;
+        border-radius: 8px !important;
+        border: 2px solid #e0e0e0 !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+        transition: all 0.3s ease !important;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15) !important;
+        border-color: #007bff !important;
+    }
+    
+    /* Large buttons for main clipboard selection and date selection */
+    .stButton > button[data-testid*="rdo"],
+    .stButton > button[data-testid*="spare_work"], 
+    .stButton > button[data-testid*="extra_work"],
+    .stButton > button[data-testid*="date_"],
+    .stButton > button[data-testid*="date_extended_"] {
+        font-size: 1.8rem !important;
+        padding: 40px 50px !important;
+        min-height: 180px !important;
+        border-radius: 15px !important;
+        width: 100% !important;
+        min-width: 300px !important;
+        margin: 15px 0px !important;
+    }
+    
+    /* Keep form submit buttons medium sized */
+    div[data-testid="stForm"] .stButton > button {
+        font-size: 1.4rem !important;
+        padding: 20px 30px !important;
+        min-height: 80px !important;
+        border-radius: 10px !important;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+        color: white !important;
+        border-color: #28a745 !important;
+    }
+    
+    /* Larger input fields for tablets */
+    .stTextInput > div > div > input {
+        font-size: 1.2rem;
+        padding: 15px;
+    }
+    
+    .stSelectbox > div > div > div {
+        font-size: 1.2rem;
+    }
+</style>""", unsafe_allow_html=True)
+
+# Data file paths
+DATA_DIR = "signup_data"
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
+
+# Google Sheets Configuration
+GOOGLE_SHEETS_ENABLED = True
+MAIN_SHEET_ID = "1HP6B7FAIquGi8yTjb35L2Er9fxt13Prw9dIAmXAnvkE"  # Main database sheet
+CREDENTIALS_FILE = "service_account_credentials.json"  # Your service account file
+DAILY_SHEETS_ENABLED = True  # Re-enabled for testing with manually created sheets
+SCHEDULER_FOLDER_ID = "1dYd5Lk0O2x8-huNXfslRHpjWVEMu3L2q"  # Scheduler sheets folder
+
+def setup_google_sheets():
+    """Setup Google Sheets connection"""
+    try:
+        if not os.path.exists(CREDENTIALS_FILE):
+            print("Google Sheets credentials file not found. Skipping Google Sheets integration.")
+            return None
+        
+        # Define the scope
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        
+        # Load credentials
+        credentials = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=scope)
+        
+        # Authorize and get the client
+        client = gspread.authorize(credentials)
+        
+        return client
+    except Exception as e:
+        print(f"Error setting up Google Sheets: {e}")
+        return None
+
+def save_to_main_sheet(clipboard_type: str, date: str, driver_name: str, additional_info: Dict = None):
+    """Save signup data to main Google Sheet"""
+    if not GOOGLE_SHEETS_ENABLED:
+        return
+    
+    try:
+        client = setup_google_sheets()
+        if not client:
+            return
+        
+        # Open the main sheet
+        main_sheet = client.open_by_key(MAIN_SHEET_ID)
+        
+        # Use a single "All Signups" worksheet for the main database
+        try:
+            worksheet = main_sheet.worksheet("All Signups")
+        except gspread.WorksheetNotFound:
+            worksheet = main_sheet.add_worksheet(title="All Signups", rows=5000, cols=10)
+            # Add headers
+            headers = ["Date Requested", "Clipboard Type", "Operator Name", "Operator ID", "Shift Time Requested", "Work Requested", "Phone #", "Signup Time", "Notes"]
+            worksheet.append_row(headers)
+        
+        # Convert clipboard type to display format for Google Sheets
+        clipboard_display_map = {
+            "SPARE_WORK": "SPARE",
+            "EXTRA_WORK": "EXTRA", 
+            "RDO": "RDO"
+        }
+        display_clipboard_type = clipboard_display_map.get(clipboard_type, clipboard_type)
+        
+        # Prepare row data for main sheet
+        signup_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        additional_info = additional_info or {}
+        
+        row_data = [
+            date,
+            display_clipboard_type,
+            driver_name,
+            additional_info.get("driver_id", ""),
+            additional_info.get("shift_time", ""),
+            additional_info.get("work_choice", additional_info.get("work_interested", "")),
+            additional_info.get("phone_number", ""),
+            signup_time,
+            additional_info.get("notes", "")
+        ]
+        
+        # Append to main sheet
+        worksheet.append_row(row_data)
+        print(f"Successfully saved to Main Sheet: {clipboard_type} - {driver_name} - {date}")
+        
+    except Exception as e:
+        print(f"Error saving to Main Sheet: {e}")
+
+def check_and_create_daily_sheet(target_date: str):
+    """Check if daily sheet exists for date in scheduler folder, create if it doesn't"""
+    if not GOOGLE_SHEETS_ENABLED or not DAILY_SHEETS_ENABLED:
+        return None
+        
+    try:
+        client = setup_google_sheets()
+        if not client:
+            return None
+            
+        # Format date for sheet title to match your naming convention (YYYY-MM-DD)
+        daily_sheet_title = target_date  # Use the date directly (e.g., "2026-01-29")
+        
+        # Check if sheet already exists by trying to open it
+        try:
+            existing_sheet = client.open(daily_sheet_title)
+            print(f"Daily sheet already exists: {daily_sheet_title}")
+            return existing_sheet.id
+        except gspread.SpreadsheetNotFound:
+            # Sheet doesn't exist, create it
+            print(f"Creating new daily sheet: {daily_sheet_title}")
+            pass
+        
+        # Since you manually created the sheet, we'll skip the creation part and just try to open it
+        # Create new sheet directly in the scheduler folder (avoids service account storage quota)
+        # daily_sheet = client.create(daily_sheet_title, folder_id=SCHEDULER_FOLDER_ID)
+        print(f"Skipping sheet creation - using manually created sheet: {daily_sheet_title}")
+        
+        # Try to open the manually created sheet
+        try:
+            daily_sheet = client.open(daily_sheet_title)
+            print(f"Successfully opened manually created sheet: {daily_sheet_title}")
+        except gspread.SpreadsheetNotFound:
+            print(f"Could not find manually created sheet: {daily_sheet_title}")
+            return None
+        
+        print(f"Created daily sheet in scheduler folder: {daily_sheet_title}")
+        print(f"Sheet URL: https://docs.google.com/spreadsheets/d/{daily_sheet.id}")
+        
+        # Check if worksheets already exist, create them if they don't
+        existing_worksheets = [ws.title for ws in daily_sheet.worksheets()]
+        print(f"Existing worksheets: {existing_worksheets}")
+        
+        # Create three worksheets with headers (if they don't exist)
+        clipboard_types = {
+            "SPARE": "Spare Work",
+            "EXTRA": "Extra Work", 
+            "RDO": "RDO"
+        }
+        
+        for clipboard_key, tab_name in clipboard_types.items():
+            if tab_name not in existing_worksheets:
+                # Create worksheet
+                if len(existing_worksheets) == 0:
+                    # Use the default first sheet if no worksheets exist
+                    worksheet = daily_sheet.sheet1
+                    worksheet.update_title(tab_name)
+                else:
+                    worksheet = daily_sheet.add_worksheet(title=tab_name, rows=100, cols=10)
+                
+                # Add headers matching main sheet structure
+                headers = ["Date Requested", "Operator Name", "Operator ID", "Shift Time Requested", "Work Requested", "Phone #", "Signup Time", "Notes"]
+                worksheet.append_row(headers)
+                print(f"Created new worksheet: {tab_name}")
+            else:
+                print(f"Worksheet already exists: {tab_name}")
+        
+        return daily_sheet.id
+        
+    except Exception as e:
+        print(f"Error checking/creating daily sheet: {e}")
+        return None
+
+def add_to_daily_sheet(target_date: str, clipboard_type: str, driver_name: str, additional_info: Dict = None):
+    """Add signup to the appropriate daily sheet tab"""
+    if not GOOGLE_SHEETS_ENABLED or not DAILY_SHEETS_ENABLED:
+        return
+        
+    try:
+        # Ensure daily sheet exists
+        daily_sheet_id = check_and_create_daily_sheet(target_date)
+        if not daily_sheet_id:
+            return
+            
+        client = setup_google_sheets()
+        if not client:
+            return
+            
+        # Open the daily sheet
+        daily_sheet = client.open_by_key(daily_sheet_id)
+        
+        # Map clipboard types to tab names
+        clipboard_display_map = {
+            "SPARE_WORK": "Spare Work",
+            "EXTRA_WORK": "Extra Work", 
+            "RDO": "RDO"
+        }
+        
+        tab_name = clipboard_display_map.get(clipboard_type, clipboard_type)
+        worksheet = daily_sheet.worksheet(tab_name)
+        
+        # Prepare row data for daily sheet (excluding clipboard type since it's separated by tabs)
+        signup_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        additional_info = additional_info or {}
+        
+        row_data = [
+            target_date,
+            driver_name,
+            additional_info.get("driver_id", ""),
+            additional_info.get("shift_time", ""),
+            additional_info.get("work_choice", additional_info.get("work_interested", "")),
+            additional_info.get("phone_number", ""),
+            signup_time,
+            additional_info.get("notes", "")
+        ]
+        
+        # Append to daily sheet
+        worksheet.append_row(row_data)
+        print(f"Successfully added to daily sheet {tab_name}: {driver_name}")
+        
+    except Exception as e:
+        print(f"Error adding to daily sheet: {e}")
+
+def create_daily_sheet(target_date: str):
+    """Create a new daily sheet with 3 tabs for a specific date"""
+    if not GOOGLE_SHEETS_ENABLED:
+        print("Google Sheets not enabled. Cannot create daily sheet.")
+        return None
+    
+    try:
+        client = setup_google_sheets()
+        if not client:
+            return None
+        
+        # Open main sheet to get data
+        main_sheet = client.open_by_key(MAIN_SHEET_ID)
+        all_signups_worksheet = main_sheet.worksheet("All Signups")
+        
+        # Get all records and filter for target date
+        all_records = all_signups_worksheet.get_all_records()
+        target_records = [record for record in all_records if record['Date'] == target_date]
+        
+        if not target_records:
+            print(f"No signups found for {target_date}")
+            return None
+        
+        # Create new sheet for the day
+        date_formatted = datetime.strptime(target_date, "%Y-%m-%d").strftime("%m-%d-%Y")
+        daily_sheet_title = f"Daily Signups {date_formatted}"
+        
+        # Create the new spreadsheet
+        daily_sheet = client.create(daily_sheet_title)
+        
+        # Share with the same permissions as main sheet (you'll need to do this manually or add logic)
+        print(f"Created daily sheet: {daily_sheet_title}")
+        print(f"Sheet URL: https://docs.google.com/spreadsheets/d/{daily_sheet.id}")
+        
+        # Create three worksheets and populate them
+        clipboard_types = {
+            "SPARE_WORK": "Spare Work",
+            "EXTRA_WORK": "Extra Work", 
+            "RDO": "RDO"
+        }
+        
+        for clipboard_key, tab_name in clipboard_types.items():
+            # Filter records for this clipboard type
+            clipboard_records = [r for r in target_records if r['Clipboard Type'] == clipboard_key]
+            
+            if clipboard_records:
+                # Create worksheet
+                if tab_name == "Spare Work":
+                    worksheet = daily_sheet.sheet1  # Use the default first sheet
+                    worksheet.update_title(tab_name)
+                else:
+                    worksheet = daily_sheet.add_worksheet(title=tab_name, rows=100, cols=10)
+                
+                # Add headers
+                headers = ["Driver Name", "Driver ID", "Shift Time", "Work Interest", "Notes", "Signup Time"]
+                worksheet.append_row(headers)
+                
+                # Add data rows
+                for record in clipboard_records:
+                    row_data = [
+                        record['Driver Name'],
+                        record['Driver ID'],
+                        record['Shift Time'], 
+                        record['Work Choice/Interest'],
+                        record['Notes'],
+                        record['Signup Time']
+                    ]
+                    worksheet.append_row(row_data)
+                    
+                print(f"Added {len(clipboard_records)} {tab_name} signups to daily sheet")
+        
+        return daily_sheet.id
+        
+    except Exception as e:
+        print(f"Error creating daily sheet: {e}")
+        return None
+
+def get_signup_file(clipboard_type: str, date: str) -> str:
+    """Get the file path for storing signup data"""
+    return os.path.join(DATA_DIR, f"{clipboard_type}_{date}.json")
+
+def load_signups(clipboard_type: str, date: str) -> List[Dict]:
+    """Load existing signups for a specific clipboard and date"""
+    file_path = get_signup_file(clipboard_type, date)
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    return []
+
+def save_signup(clipboard_type: str, date: str, driver_name: str, additional_info: Dict = None):
+    """Save a new signup to local JSON, Main Google Sheet, and Daily Sheet"""
+    # Save to local JSON file (existing functionality)
+    signups = load_signups(clipboard_type, date)
+    
+    new_signup = {
+        "driver_name": driver_name,
+        "signup_time": datetime.now().isoformat(),
+        "additional_info": additional_info or {}
+    }
+    
+    signups.append(new_signup)
+    
+    file_path = get_signup_file(clipboard_type, date)
+    with open(file_path, 'w') as f:
+        json.dump(signups, f, indent=2)
+    
+    # Save to Main Google Sheet
+    save_to_main_sheet(clipboard_type, date, driver_name, additional_info)
+    
+    # Save to Daily Sheet (creates sheet if it doesn't exist)
+    add_to_daily_sheet(date, clipboard_type, driver_name, additional_info)
+
+def get_work_dates(days: int = 31) -> List[str]:
+    """Get available work dates from tomorrow (if before 11am) or day after tomorrow (if after 11am)"""
+    dates = []
+    now = datetime.now()
+    today = now.date()
+    
+    # Before 11:00 AM: can sign up for tomorrow
+    # After 11:00 AM: can only sign up starting day after tomorrow
+    if now.hour < 11:
+        start_day = 1  # Start from tomorrow
+    else:
+        start_day = 2  # Start from day after tomorrow
+    
+    # Add dates starting from the determined start day
+    for i in range(start_day, days + start_day):
+        date = today + timedelta(days=i)
+        dates.append(date.strftime("%Y-%m-%d"))
+    return dates
+
+def format_date_display(date_str: str) -> str:
+    """Format date for display with day name"""
+    date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    today = datetime.now().date()
+    now = datetime.now()
+    
+    # Show time-sensitive labeling for the first available day
+    if now.hour < 11:
+        # Before 11am: first available is tomorrow
+        if date == today + timedelta(days=1):
+            return f"Tomorrow - {date.strftime('%A, %m/%d')}\nAvailable until 11am"
+        elif date == today + timedelta(days=2):
+            return f"{date.strftime('%A, %m/%d')}"
+    else:
+        # After 11am: first available is day after tomorrow
+        if date == today + timedelta(days=2):
+            return f"{date.strftime('%A, %m/%d')} - Available until 11am"
+    
+    # All other dates show day name and date
+    return f"{date.strftime('%A, %m/%d')}"
+
+# Initialize session state
+if 'current_clipboard' not in st.session_state:
+    st.session_state.current_clipboard = None
+if 'selected_date' not in st.session_state:
+    st.session_state.selected_date = None
+if 'show_success' not in st.session_state:
+    st.session_state.show_success = False
+if 'success_info' not in st.session_state:
+    st.session_state.success_info = {}
+
+# Main app header
+st.markdown('<h1 class="main-header">🚌 Operator Signup System</h1>', unsafe_allow_html=True)
+
+# Clipboard selection screen
+if st.session_state.current_clipboard is None:
+    print(f"DEBUG: On home page - Current clipboard: {st.session_state.current_clipboard}")
+    print(f"DEBUG: Home page session state keys: {list(st.session_state.keys())}")
+    
+    st.markdown("### Select a signup sheet:")
+    
+    # Tile-based layout with 3 equal columns
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # Custom HTML button for Spare Work
+        if st.button("🚌 Spare Work Sign Up", key="spare_work", help="Spare work opportunities", width='stretch'):
+            print("DEBUG: Spare Work button clicked")
+            st.session_state.current_clipboard = "SPARE_WORK"
+            print(f"DEBUG: Set clipboard to: {st.session_state.current_clipboard}")
+            st.rerun()
+            
+    with col2:
+        # Custom HTML button for Extra Work
+        if st.button("⭐ Extra Work Sign Up", key="extra_work", help="Additional work opportunities", width='stretch'):
+            print("DEBUG: Extra Work button clicked")
+            st.session_state.current_clipboard = "EXTRA_WORK"
+            print(f"DEBUG: Set clipboard to: {st.session_state.current_clipboard}")
+            st.rerun()
+
+    with col3:
+        # Custom HTML button for RDO
+        if st.button("📋 RDO Sign Up", key="rdo", help="Regular Day Off signup", width='stretch'):
+            print("DEBUG: RDO button clicked")
+            st.session_state.current_clipboard = "RDO"
+            print(f"DEBUG: Set clipboard to: {st.session_state.current_clipboard}")
+            st.rerun()
+
+# Date selection screen
+elif st.session_state.selected_date is None:
+    st.markdown(f"### 📅 Select date for {st.session_state.current_clipboard.replace('_', ' ').upper()}:")
+    
+    # Back button
+    if st.button("← Back to Clipboards", key="back_to_clipboards"):
+        st.session_state.current_clipboard = None
+        st.rerun()
+    
+    dates = get_work_dates(31)  # Show next 31 days starting tomorrow
+    
+    # Show first 14 days (2 weeks) prominently
+    st.markdown("#### 📅 Next 2 Weeks:")
+    col1, col2 = st.columns(2)
+    
+    for i, date in enumerate(dates[:14]):
+        col = col1 if i % 2 == 0 else col2
+        with col:
+            button_text = format_date_display(date)
+            if st.button(button_text, key=f"date_{date}", width='stretch'):
+                print(f"DEBUG: Date button clicked - {date}")
+                print(f"DEBUG: Button text: {button_text}")
+                print(f"DEBUG: Button key: date_{date}")
+                print(f"DEBUG: Column: {'col1 (left)' if i % 2 == 0 else 'col2 (right)'}")
+                st.markdown(f"**🔍 DEBUG:** Selected date `{date}` ({button_text})")
+                st.session_state.selected_date = date
+                st.rerun()
+    
+    # Show remaining dates in an expander
+    if len(dates) > 14:
+        with st.expander("📆 View More Dates (Weeks 3-5)", expanded=False):
+            col3, col4 = st.columns(2)
+            
+            for i, date in enumerate(dates[14:]):
+                col = col3 if i % 2 == 0 else col4
+                with col:
+                    button_text = format_date_display(date)
+                    if st.button(button_text, key=f"date_extended_{date}", width='stretch'):
+                        print(f"DEBUG: Extended date button clicked - {date}")
+                        print(f"DEBUG: Button text: {button_text}")
+                        print(f"DEBUG: Button key: date_extended_{date}")
+                        print(f"DEBUG: Column: {'col3 (left)' if i % 2 == 0 else 'col4 (right)'}")
+                        print(f"DEBUG: Button index in extended section: {i}")
+                        st.markdown(f"**🔍 DEBUG:** Selected extended date `{date}` ({button_text})")
+                        st.session_state.selected_date = date
+                        st.rerun()
+
+# Signup form screen
+else:
+    clipboard_type = st.session_state.current_clipboard
+    selected_date = st.session_state.selected_date
+    
+    st.markdown(f"### 📝 {clipboard_type.replace('_', ' ').upper()} - {format_date_display(selected_date)}")
+    
+    # Back buttons
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("← Back to Dates", key="back_to_dates"):
+            st.session_state.selected_date = None
+            st.rerun()
+    with col2:
+        if st.button("← Back to Clipboards", key="back_to_clipboards_2"):
+            st.session_state.current_clipboard = None
+            st.session_state.selected_date = None
+            st.rerun()
+    
+    # Show current signups
+    current_signups = load_signups(clipboard_type, selected_date)
+    
+    if current_signups:
+        st.markdown("#### Current Signups:")
+        
+        if clipboard_type == "RDO":
+            # RDO-specific display with ID, Name, and Choice of Work
+            signup_data = []
+            for signup in current_signups:
+                additional_info = signup.get("additional_info", {})
+                work_choice = additional_info.get("work_choice", "Not specified")
+                phone_number = additional_info.get("phone_number", "")
+                
+                row_data = {
+                    "ID #": additional_info.get("driver_id", "Not provided"),
+                    "Driver Name": signup["driver_name"],
+                    "Choice of Work": work_choice
+                }
+                
+                # Only add phone column if someone has provided a phone number
+                if phone_number:
+                    row_data["Phone #"] = phone_number
+                
+                signup_data.append(row_data)
+        elif clipboard_type == "SPARE_WORK":
+            # Spare Work-specific display
+            signup_data = []
+            for signup in current_signups:
+                additional_info = signup.get("additional_info", {})
+                
+                signup_data.append({
+                    "Shift": additional_info.get("shift_time", "Not specified"),
+                    "ID #": additional_info.get("driver_id", "Not provided"),
+                    "Driver Name": signup["driver_name"],
+                    "Work Interested IN": additional_info.get("work_interested", "Not specified")
+                })
+        elif clipboard_type == "EXTRA_WORK":
+            # Extra Work-specific display
+            signup_data = []
+            for signup in current_signups:
+                additional_info = signup.get("additional_info", {})
+                
+                signup_data.append({
+                    "Shift": additional_info.get("shift_time", "Not specified"),
+                    "ID #": additional_info.get("driver_id", "Not provided"),
+                    "Driver Name": signup["driver_name"],
+                    "Work Interested IN": additional_info.get("work_interested", "Not specified")
+                })
+        else:
+            # Default display for other clipboard types
+            signup_data = []
+            for signup in current_signups:
+                row_data = {
+                    "Driver Name": signup["driver_name"],
+                    "Signup Time": datetime.fromisoformat(signup["signup_time"]).strftime("%I:%M %p")
+                }
+                # Add notes if they exist
+                additional_info = signup.get("additional_info", {})
+                if additional_info.get("notes"):
+                    row_data["Notes"] = additional_info["notes"]
+                signup_data.append(row_data)
+        
+        signup_df = pd.DataFrame(signup_data)
+        st.dataframe(signup_df, width='stretch', hide_index=True)
+    else:
+        st.info("No signups yet for this date.")
+    
+    # Check if we should show success message and countdown AFTER the table
+    if st.session_state.show_success:
+        success_info = st.session_state.success_info
+        st.success(f"✅ Your request has been successfully submitted!")
+        st.info(f"**{success_info['driver_name']}** signed up for **{success_info['clipboard_type']}** on **{success_info['formatted_date']}**")
+        
+        # Show countdown and return to home
+        placeholder = st.empty()
+        for seconds in range(6, 0, -1):
+            placeholder.info(f"🏠 Returning to home page in {seconds} seconds...")
+            import time
+            time.sleep(1)
+        
+        # Reset session state to return to home
+        st.session_state.current_clipboard = None
+        st.session_state.selected_date = None
+        st.session_state.show_success = False
+        st.session_state.success_info = {}
+        placeholder.empty()
+        st.rerun()
+    
+    # Signup form
+    st.markdown("#### Add Your Signup:")
+    
+    with st.form("signup_form", clear_on_submit=True):
+        # Common fields for all clipboard types
+        driver_name = st.text_input(
+            "Driver Name", 
+            placeholder="Enter your full name...",
+            help="Please enter your full name as it appears on your badge"
+        )
+        
+        # Clipboard-specific fields
+        additional_info = {}
+        
+        if clipboard_type == "RDO":
+            # RDO specific fields: ID #, Name (already have), Choice of work
+            driver_id = st.text_input(
+                "ID #", 
+                placeholder="Enter your employee ID number...",
+                help="Your employee identification number"
+            )
+            
+            work_choice = st.text_input(
+                "Choice of Work",
+                placeholder="Enter your preferred work assignment...",
+                help="Specify your preferred work assignment (e.g., AM Spare, PM Spare, Extra Board, etc.)"
+            )
+            
+            phone_number = st.text_input(
+                "Phone # (Optional)",
+                placeholder="Enter phone number if you'd like to be on a call list...",
+                help="Optional: Provide your phone number to be included on the call list"
+            )
+            
+            additional_info = {
+                "driver_id": driver_id,
+                "work_choice": work_choice,
+                "phone_number": phone_number
+            }
+        
+        elif clipboard_type == "SPARE_WORK":
+            # Spare Work specific fields: Run #, AM/PM/Split, ID #, Name (already have), Work Interested IN
+            driver_id = st.text_input(
+                "ID #", 
+                placeholder="Enter your employee ID number...",
+                help="Your employee identification number"
+            )
+
+            shift_time = st.radio(
+                "AM/PM",
+                options=["AM", "PM", "Either"],
+                index=None,
+                help="Select when you're available to work",
+                horizontal=True
+            )
+                    
+            work_interested = st.text_input(
+                "Work Interested in",
+                placeholder="Enter any work you're interested in...",
+                help="Specify the type of spare work or assignment you're interested in"
+            )
+            
+            additional_info = {
+                "shift_time": shift_time,
+                "driver_id": driver_id,
+                "work_interested": work_interested
+            }
+        
+        elif clipboard_type == "EXTRA_WORK":
+            # Extra Work specific fields: Run #, AM/PM/During Split, ID #, Name (already have), Work Interested IN
+            driver_id = st.text_input(
+                "ID #", 
+                placeholder="Enter your employee ID number...",
+                help="Your employee identification number"
+            )
+            
+            shift_time = st.radio(
+                "AM/PM",
+                options=["AM", "PM", "Either"],
+                index=None,
+                help="Select when you're available to work",
+                horizontal=True
+            )
+            
+            work_interested = st.text_input(
+                "Work Interested in",
+                placeholder="Enter any work you're interested in...",
+                help="Specify the type of work or assignment you're interested in"
+            )
+            
+            additional_info = {
+                "shift_time": shift_time,
+                "driver_id": driver_id,
+                "work_interested": work_interested
+            }
+        
+        else:
+            # For other clipboard types, keep the notes field for now
+            notes = st.text_area(
+                "Notes (Optional)", 
+                placeholder="Any additional information...",
+                help="Optional notes or special requirements"
+            )
+            additional_info = {"notes": notes} if notes else {}
+        
+        submitted = st.form_submit_button("✅ Sign Me Up!", width='stretch')
+        
+        if submitted:
+            # Validation based on clipboard type
+            valid = True
+            error_messages = []
+            
+            if not driver_name.strip():
+                error_messages.append("Please enter your name.")
+                valid = False
+            
+            if clipboard_type == "RDO":
+                if not driver_id.strip():
+                    error_messages.append("Please enter your ID number.")
+                    valid = False
+                if not work_choice.strip():
+                    error_messages.append("Please enter your choice of work.")
+                    valid = False
+            
+            elif clipboard_type == "SPARE_WORK": 
+                if not driver_id.strip():
+                    error_messages.append("Please enter your ID number.")
+                    valid = False
+                if not shift_time:
+                    error_messages.append("Please select a shift time.")
+                    valid = False
+                if not work_interested.strip():
+                    error_messages.append("Please enter the spare work you're interested in.")
+                    valid = False
+            
+            elif clipboard_type == "EXTRA_WORK":
+                if not driver_id.strip():
+                    error_messages.append("Please enter your ID number.")
+                    valid = False
+                if not shift_time:
+                    error_messages.append("Please select a shift time.")
+                    valid = False
+                if not work_interested.strip():
+                    error_messages.append("Please enter the work you're interested in.")
+                    valid = False
+            
+            if valid:
+                save_signup(clipboard_type, selected_date, driver_name.strip(), additional_info)
+                
+                # Set success info in session state and trigger page refresh
+                st.session_state.show_success = True
+                st.session_state.success_info = {
+                    'driver_name': driver_name.strip(),
+                    'clipboard_type': clipboard_type.replace('_', ' ').title(),
+                    'formatted_date': format_date_display(selected_date)
+                }
+                st.rerun()
+            else:
+                for error in error_messages:
+                    st.error(error)
+
+# Footer
+st.markdown("---")
+st.markdown("**NICE Operator Signup System** • Questions? Contact your supervisor")
