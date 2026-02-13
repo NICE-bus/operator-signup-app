@@ -94,6 +94,46 @@ st.markdown("""
     .stSelectbox > div > div > div {
         font-size: 1.2rem;
     }
+    
+    /* Mobile portrait responsiveness */
+    @media screen and (max-width: 768px) {
+        .main-header {
+            font-size: 1.8rem !important;
+        }
+        
+        /* Shrink all buttons for mobile */
+        .stButton > button {
+            font-size: 1rem !important;
+            padding: 10px 15px !important;
+            min-height: 45px !important;
+        }
+        
+        /* Shrink large tile buttons for mobile */
+        .stButton > button[data-testid*="rdo"],
+        .stButton > button[data-testid*="spare_work"], 
+        .stButton > button[data-testid*="extra_work"],
+        .stButton > button[data-testid*="date_"],
+        .stButton > button[data-testid*="date_extended_"] {
+            font-size: 1.1rem !important;
+            padding: 15px 10px !important;
+            min-height: 70px !important;
+            min-width: unset !important;
+            margin: 5px 0px !important;
+        }
+        
+        /* Shrink form submit button on mobile */
+        div[data-testid="stForm"] .stButton > button {
+            font-size: 1.1rem !important;
+            padding: 12px 20px !important;
+            min-height: 55px !important;
+        }
+        
+        /* Smaller inputs on mobile */
+        .stTextInput > div > div > input {
+            font-size: 1rem;
+            padding: 10px;
+        }
+    }
 </style>""", unsafe_allow_html=True)
 
 # Data file paths
