@@ -9,9 +9,17 @@ import json
 import os
 from datetime import datetime, timedelta
 from typing import Dict, List
+from zoneinfo import ZoneInfo
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
+
+# Timezone configuration - all times in Eastern
+EASTERN = ZoneInfo("America/New_York")
+
+def now_eastern():
+    """Get current time in Eastern timezone"""
+    return datetime.now(EASTERN)
 
 # App configuration
 st.set_page_config(
@@ -158,7 +166,7 @@ def save_to_main_sheet(clipboard_type: str, date: str, driver_name: str, additio
         display_clipboard_type = clipboard_display_map.get(clipboard_type, clipboard_type)
         
         # Prepare row data for main sheet
-        signup_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        signup_time = now_eastern().strftime("%Y-%m-%d %H:%M:%S")
         additional_info = additional_info or {}
         
         row_data = [
@@ -282,7 +290,7 @@ def add_to_daily_sheet(target_date: str, clipboard_type: str, driver_name: str, 
         worksheet = daily_sheet.worksheet(tab_name)
         
         # Prepare row data for daily sheet (excluding clipboard type since it's separated by tabs)
-        signup_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        signup_time = now_eastern().strftime("%Y-%m-%d %H:%M:%S")
         additional_info = additional_info or {}
         
         row_data = [
@@ -399,7 +407,7 @@ def save_signup(clipboard_type: str, date: str, driver_name: str, additional_inf
     
     new_signup = {
         "driver_name": driver_name,
-        "signup_time": datetime.now().isoformat(),
+        "signup_time": now_eastern().isoformat(),
         "additional_info": additional_info or {}
     }
     
@@ -418,7 +426,7 @@ def save_signup(clipboard_type: str, date: str, driver_name: str, additional_inf
 def get_work_dates(days: int = 31) -> List[str]:
     """Get available work dates from tomorrow (if before 11am) or day after tomorrow (if after 11am)"""
     dates = []
-    now = datetime.now()
+    now = now_eastern()
     today = now.date()
     
     # Before 11:00 AM: can sign up for tomorrow
@@ -437,8 +445,8 @@ def get_work_dates(days: int = 31) -> List[str]:
 def format_date_display(date_str: str) -> str:
     """Format date for display with day name"""
     date = datetime.strptime(date_str, "%Y-%m-%d").date()
-    today = datetime.now().date()
-    now = datetime.now()
+    today = now_eastern().date()
+    now = now_eastern()
     
     # Show time-sensitive labeling for the first available day
     if now.hour < 11:
