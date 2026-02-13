@@ -101,17 +101,23 @@ DAILY_SHEETS_ENABLED = True  # Re-enabled for testing with manually created shee
 SCHEDULER_FOLDER_ID = "1dYd5Lk0O2x8-huNXfslRHpjWVEMu3L2q"  # Scheduler sheets folder
 
 def setup_google_sheets():
-    """Setup Google Sheets connection"""
+    """Setup Google Sheets connection - supports local file or Streamlit Cloud Secrets"""
     try:
-        if not os.path.exists(CREDENTIALS_FILE):
-            print("Google Sheets credentials file not found. Skipping Google Sheets integration.")
-            return None
-        
         # Define the scope
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         
-        # Load credentials
-        credentials = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=scope)
+        # Option 1: Load from local credentials file (for local development)
+        if os.path.exists(CREDENTIALS_FILE):
+            credentials = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=scope)
+        # Option 2: Load from Streamlit Secrets (for Streamlit Cloud deployment)
+        elif hasattr(st, 'secrets') and "gcp_service_account" in st.secrets:
+            from google.oauth2.service_account import Credentials as ServiceCredentials
+            credentials = ServiceCredentials.from_service_account_info(
+                st.secrets["gcp_service_account"], scopes=scope
+            )
+        else:
+            print("No Google Sheets credentials found. Skipping Google Sheets integration.")
+            return None
         
         # Authorize and get the client
         client = gspread.authorize(credentials)
