@@ -40,7 +40,7 @@ st.markdown("""
         margin-bottom: 1rem;
     }
     
-    /* Default button styling - smaller for navigation */
+    /* Default button styling */
     .stButton > button {
         font-size: 1.2rem !important;
         font-weight: bold !important;
@@ -51,6 +51,8 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
         transition: all 0.3s ease !important;
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
     }
     
     .stButton > button:hover {
@@ -59,22 +61,7 @@ st.markdown("""
         border-color: #007bff !important;
     }
     
-    /* Large buttons for main clipboard selection and date selection */
-    .stButton > button[data-testid*="rdo"],
-    .stButton > button[data-testid*="spare_work"], 
-    .stButton > button[data-testid*="extra_work"],
-    .stButton > button[data-testid*="date_"],
-    .stButton > button[data-testid*="date_extended_"] {
-        font-size: 1.8rem !important;
-        padding: 40px 50px !important;
-        min-height: 180px !important;
-        border-radius: 15px !important;
-        width: 100% !important;
-        min-width: 300px !important;
-        margin: 15px 0px !important;
-    }
-    
-    /* Keep form submit buttons medium sized */
+    /* Keep form submit buttons styled */
     div[data-testid="stForm"] .stButton > button {
         font-size: 1.4rem !important;
         padding: 20px 30px !important;
@@ -95,43 +82,55 @@ st.markdown("""
         font-size: 1.2rem;
     }
     
-    /* Mobile portrait responsiveness */
+    /* Desktop/Tablet: large buttons */
+    @media screen and (min-width: 769px) {
+        .stButton > button {
+            font-size: 1.8rem !important;
+            padding: 40px 30px !important;
+            min-height: 180px !important;
+            border-radius: 15px !important;
+        }
+        
+        div[data-testid="stForm"] .stButton > button {
+            font-size: 1.4rem !important;
+            padding: 20px 30px !important;
+            min-height: 80px !important;
+        }
+    }
+    
+    /* Mobile portrait: compact buttons */
     @media screen and (max-width: 768px) {
         .main-header {
-            font-size: 1.8rem !important;
+            font-size: 1.6rem !important;
         }
         
-        /* Shrink all buttons for mobile */
         .stButton > button {
             font-size: 1rem !important;
-            padding: 10px 15px !important;
-            min-height: 45px !important;
-        }
-        
-        /* Shrink large tile buttons for mobile */
-        .stButton > button[data-testid*="rdo"],
-        .stButton > button[data-testid*="spare_work"], 
-        .stButton > button[data-testid*="extra_work"],
-        .stButton > button[data-testid*="date_"],
-        .stButton > button[data-testid*="date_extended_"] {
-            font-size: 1.1rem !important;
-            padding: 15px 10px !important;
-            min-height: 70px !important;
+            padding: 12px 10px !important;
+            min-height: 50px !important;
             min-width: unset !important;
-            margin: 5px 0px !important;
+            margin: 4px 0px !important;
+            border-radius: 8px !important;
         }
         
-        /* Shrink form submit button on mobile */
         div[data-testid="stForm"] .stButton > button {
             font-size: 1.1rem !important;
-            padding: 12px 20px !important;
-            min-height: 55px !important;
+            padding: 12px 15px !important;
+            min-height: 50px !important;
         }
         
-        /* Smaller inputs on mobile */
         .stTextInput > div > div > input {
-            font-size: 1rem;
-            padding: 10px;
+            font-size: 1rem !important;
+            padding: 10px !important;
+        }
+        
+        .stSelectbox > div > div > div {
+            font-size: 1rem !important;
+        }
+        
+        /* Stack columns vertically on mobile */
+        [data-testid="stHorizontalBlock"] {
+            flex-direction: column !important;
         }
     }
 </style>""", unsafe_allow_html=True)
