@@ -85,10 +85,10 @@ st.markdown("""
     /* Desktop/Tablet: large buttons */
     @media screen and (min-width: 769px) {
         .stButton > button {
-            font-size: 1.8rem !important;
-            padding: 40px 30px !important;
-            min-height: 180px !important;
-            border-radius: 15px !important;
+            font-size: 1.4rem !important;
+            padding: 20px 20px !important;
+            min-height: 80px !important;
+            border-radius: 12px !important;
         }
         
         div[data-testid="stForm"] .stButton > button {
@@ -106,10 +106,9 @@ st.markdown("""
         
         .stButton > button {
             font-size: 1rem !important;
-            padding: 12px 10px !important;
-            min-height: 50px !important;
+            padding: 10px 10px !important;
+            min-height: 44px !important;
             min-width: unset !important;
-            margin: 4px 0px !important;
             border-radius: 8px !important;
         }
         
@@ -131,6 +130,18 @@ st.markdown("""
         /* Stack columns vertically on mobile */
         [data-testid="stHorizontalBlock"] {
             flex-direction: column !important;
+            gap: 0.5rem !important;
+        }
+        
+        [data-testid="stHorizontalBlock"] > div {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }
+        
+        /* Normalize all vertical spacing to match */
+        [data-testid="stVerticalBlock"] {
+            gap: 0.5rem !important;
         }
     }
 </style>""", unsafe_allow_html=True)
@@ -562,39 +573,42 @@ elif st.session_state.selected_date is None:
     
     # Show first 14 days (2 weeks) prominently
     st.markdown("#### 📅 Next 2 Weeks:")
-    col1, col2 = st.columns(2)
     
-    for i, date in enumerate(dates[:14]):
-        col = col1 if i % 2 == 0 else col2
-        with col:
+    for i in range(0, min(14, len(dates)), 2):
+        row_cols = st.columns(2)
+        with row_cols[0]:
+            date = dates[i]
             button_text = format_date_display(date)
             if st.button(button_text, key=f"date_{date}", width='stretch'):
-                print(f"DEBUG: Date button clicked - {date}")
-                print(f"DEBUG: Button text: {button_text}")
-                print(f"DEBUG: Button key: date_{date}")
-                print(f"DEBUG: Column: {'col1 (left)' if i % 2 == 0 else 'col2 (right)'}")
-                st.markdown(f"**🔍 DEBUG:** Selected date `{date}` ({button_text})")
                 st.session_state.selected_date = date
                 st.rerun()
+        if i + 1 < len(dates[:14]):
+            with row_cols[1]:
+                date = dates[i + 1]
+                button_text = format_date_display(date)
+                if st.button(button_text, key=f"date_{date}", width='stretch'):
+                    st.session_state.selected_date = date
+                    st.rerun()
     
     # Show remaining dates in an expander
     if len(dates) > 14:
         with st.expander("📆 View More Dates (Weeks 3-5)", expanded=False):
-            col3, col4 = st.columns(2)
-            
-            for i, date in enumerate(dates[14:]):
-                col = col3 if i % 2 == 0 else col4
-                with col:
+            extended_dates = dates[14:]
+            for i in range(0, len(extended_dates), 2):
+                row_cols = st.columns(2)
+                with row_cols[0]:
+                    date = extended_dates[i]
                     button_text = format_date_display(date)
                     if st.button(button_text, key=f"date_extended_{date}", width='stretch'):
-                        print(f"DEBUG: Extended date button clicked - {date}")
-                        print(f"DEBUG: Button text: {button_text}")
-                        print(f"DEBUG: Button key: date_extended_{date}")
-                        print(f"DEBUG: Column: {'col3 (left)' if i % 2 == 0 else 'col4 (right)'}")
-                        print(f"DEBUG: Button index in extended section: {i}")
-                        st.markdown(f"**🔍 DEBUG:** Selected extended date `{date}` ({button_text})")
                         st.session_state.selected_date = date
                         st.rerun()
+                if i + 1 < len(extended_dates):
+                    with row_cols[1]:
+                        date = extended_dates[i + 1]
+                        button_text = format_date_display(date)
+                        if st.button(button_text, key=f"date_extended_{date}", width='stretch'):
+                            st.session_state.selected_date = date
+                            st.rerun()
 
 # Signup form screen
 else:
