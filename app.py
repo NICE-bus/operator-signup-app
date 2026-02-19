@@ -723,49 +723,36 @@ else:
     
     with st.form("signup_form", clear_on_submit=True):
         # Common fields for all clipboard types
-        driver_name = st.text_input(
-            "Driver Name", 
+        driver_id = st.text_input(
+            "ID #",
+            placeholder="Enter your employee ID number...",
+            help="Your employee identification number"
+        )
+        operator_name = st.text_input(
+            "Operator Name",
             placeholder="Enter your full name...",
             help="Please enter your full name as it appears on your badge"
         )
-        
         # Clipboard-specific fields
         additional_info = {}
-        
+
         if clipboard_type == "RDO":
-            # RDO specific fields: ID #, Name (already have), Choice of work
-            driver_id = st.text_input(
-                "ID #", 
-                placeholder="Enter your employee ID number...",
-                help="Your employee identification number"
-            )
-            
             work_choice = st.text_input(
                 "Choice of Work",
                 placeholder="Enter your preferred work assignment...",
                 help="Specify your preferred work assignment (e.g., AM Spare, PM Spare, Extra Board, etc.)"
             )
-            
             phone_number = st.text_input(
                 "Phone # (Optional)",
                 placeholder="Enter phone number if you'd like to be on a call list...",
                 help="Optional: Provide your phone number to be included on the call list"
             )
-            
             additional_info = {
                 "driver_id": driver_id,
                 "work_choice": work_choice,
                 "phone_number": phone_number
             }
-        
         elif clipboard_type == "SPARE_WORK":
-            # Spare Work specific fields: Run #, AM/PM/Split, ID #, Name (already have), Work Interested IN
-            driver_id = st.text_input(
-                "ID #", 
-                placeholder="Enter your employee ID number...",
-                help="Your employee identification number"
-            )
-
             shift_time = st.radio(
                 "AM/PM",
                 options=["AM", "PM", "Either"],
@@ -773,27 +760,17 @@ else:
                 help="Select when you're available to work",
                 horizontal=True
             )
-                    
             work_interested = st.text_input(
                 "Work Interested in",
                 placeholder="Enter any work you're interested in...",
                 help="Specify the type of spare work or assignment you're interested in"
             )
-            
             additional_info = {
                 "shift_time": shift_time,
                 "driver_id": driver_id,
                 "work_interested": work_interested
             }
-        
         elif clipboard_type == "EXTRA_WORK":
-            # Extra Work specific fields: Run #, AM/PM/During Split, ID #, Name (already have), Work Interested IN
-            driver_id = st.text_input(
-                "ID #", 
-                placeholder="Enter your employee ID number...",
-                help="Your employee identification number"
-            )
-            
             shift_time = st.radio(
                 "AM/PM",
                 options=["AM", "PM", "Either"],
@@ -801,23 +778,19 @@ else:
                 help="Select when you're available to work",
                 horizontal=True
             )
-            
             work_interested = st.text_input(
                 "Work Interested in",
                 placeholder="Enter any work you're interested in...",
                 help="Specify the type of work or assignment you're interested in"
             )
-            
             additional_info = {
                 "shift_time": shift_time,
                 "driver_id": driver_id,
                 "work_interested": work_interested
             }
-        
         else:
-            # For other clipboard types, keep the notes field for now
             notes = st.text_area(
-                "Notes (Optional)", 
+                "Notes (Optional)",
                 placeholder="Any additional information...",
                 help="Optional notes or special requirements"
             )
@@ -865,12 +838,12 @@ else:
                     valid = False
             
             if valid:
-                save_signup(clipboard_type, selected_date, driver_name.strip(), additional_info)
+                save_signup(clipboard_type, selected_date, operator_name.strip(), additional_info)
                 
                 # Set success info in session state and trigger page refresh
                 st.session_state.show_success = True
                 st.session_state.success_info = {
-                    'driver_name': driver_name.strip(),
+                    'driver_name': operator_name.strip(),
                     'clipboard_type': clipboard_type.replace('_', ' ').title(),
                     'formatted_date': format_date_display(selected_date)
                 }
