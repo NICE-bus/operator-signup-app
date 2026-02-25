@@ -151,12 +151,46 @@ DATA_DIR = "signup_data"
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
+
 # Google Sheets Configuration
 GOOGLE_SHEETS_ENABLED = True
 MAIN_SHEET_ID = "1HP6B7FAIquGi8yTjb35L2Er9fxt13Prw9dIAmXAnvkE"  # Main database sheet
 CREDENTIALS_FILE = "service_account_credentials.json"  # Your service account file
 DAILY_SHEETS_ENABLED = True  # Re-enabled for testing with manually created sheets
 SCHEDULER_FOLDER_ID = "1dYd5Lk0O2x8-huNXfslRHpjWVEMu3L2q"  # Scheduler sheets folder
+
+# Operators Sheet Configuration
+OPERATORS_SHEET_ID = "1shAyat8-g_CAF22I6shcVnSxHz3OQxMtcfZ7EmjlNWE"
+OPERATORS_SHEET_TAB = 0  # Use first worksheet/tab
+
+@st.cache_data(show_spinner=False)
+def get_operators_data():
+    """Fetch operator data from Operators Google Sheet, only Active employees."""
+    try:
+        client = setup_google_sheets()
+        if not client:
+            return [], {}, {}
+        sheet = client.open_by_key(OPERATORS_SHEET_ID)
+        worksheet = sheet.get_worksheet(OPERATORS_SHEET_TAB)
+        records = worksheet.get_all_records()
+        # Build display list, lookup dict, and reverse lookup
+        display_list = []
+        id_lookup = {}
+        display_to_id = {}
+        for row in records:
+            op_id = str(row.get("ID #", "")).strip()
+            status = str(row.get("Employee Status", "")).strip().lower()
+            first = str(row.get("First Name", "")).strip()
+            last = str(row.get("Last Name", "")).strip()
+            if op_id and status == "active":
+                display = f"{op_id} - {first} {last}"
+                display_list.append(display)
+                id_lookup[op_id] = row
+                display_to_id[display] = op_id
+        return display_list, id_lookup, display_to_id
+    except Exception as e:
+        print(f"Error loading operators sheet: {e}")
+        return [], {}, {}
 
 def setup_google_sheets():
     """Setup Google Sheets connection - supports local file or Streamlit Cloud Secrets"""
@@ -721,18 +755,38 @@ else:
     # Signup form
     st.markdown("#### Add Your Signup:")
     
+
+
+    # --- Operator Data Integration ---
+    operator_display_list, operator_lookup, display_to_id = get_operators_data()
+
     with st.form("signup_form", clear_on_submit=True):
-        # Common fields for all clipboard types
-        operator_id = st.text_input(
-            "ID #",
-            placeholder="Enter your employee ID number...",
-            help="Your employee identification number"
+        # Operator dropdown (Active only)
+        operator_display = st.selectbox(
+            "ID # - Operator Name",
+            options=["Select your ID..."] + operator_display_list,
+            index=0,
+            help="Select your employee ID number and name"
         )
-        operator_name = st.text_input(
-            "Operator Name",
-            placeholder="Enter your full name...",
-            help="Please enter your full name as it appears on your badge"
-        )
+
+        # Map display string back to ID
+        if operator_display != "Select your ID..." and operator_display in display_to_id:
+            operator_id = display_to_id[operator_display]
+            op_row = operator_lookup[operator_id]
+            default_name = f"{op_row.get('First Name', '').strip()} {op_row.get('Last Name', '').strip()}"
+            emp_status = op_row.get('Employee Status', '').strip()
+        else:
+            operator_id = ""
+            default_name = ""
+            emp_status = ""
+
+
+        if emp_status:
+            st.info(f"Employee Status: {emp_status}")
+
+        # Set operator_name from selected operator ID
+        operator_name = default_name
+
         # Clipboard-specific fields
         additional_info = {}
 
@@ -748,7 +802,7 @@ else:
                 help="Optional: Provide your phone number to be included on the call list"
             )
             additional_info = {
-                "operator_id": operator_id,
+                "operator_id": operator_id if operator_id != "Select your ID..." else "",
                 "work_choice": work_choice,
                 "phone_number": phone_number
             }
@@ -767,7 +821,7 @@ else:
             )
             additional_info = {
                 "shift_time": shift_time,
-                "operator_id": operator_id,
+                "operator_id": operator_id if operator_id != "Select your ID..." else "",
                 "work_interested": work_interested
             }
         elif clipboard_type == "EXTRA_WORK":
@@ -785,7 +839,7 @@ else:
             )
             additional_info = {
                 "shift_time": shift_time,
-                "operator_id": operator_id,
+                "operator_id": operator_id if operator_id != "Select your ID..." else "",
                 "work_interested": work_interested
             }
         else:
@@ -803,9 +857,8 @@ else:
             valid = True
             error_messages = []
             
-            if not operator_name.strip():
-                error_messages.append("Please enter your name.")
-                valid = False
+
+            # No need to check operator_name, it's auto-filled from ID
             
             if clipboard_type == "RDO":
                 if not operator_id.strip():
@@ -838,6 +891,7 @@ else:
                     valid = False
             
             if valid:
+
                 save_signup(clipboard_type, selected_date, operator_name.strip(), additional_info)
                 
                 # Set success info in session state and trigger page refresh
