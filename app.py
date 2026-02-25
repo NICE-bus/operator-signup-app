@@ -1,5 +1,5 @@
 """
-Driver Signup App - Streamlit Tablet Interface
+operator Signup App - Streamlit Tablet Interface
 Replaces physical clipboards with a digital signup system
 Date: December 31, 2025
 """
@@ -185,7 +185,7 @@ def setup_google_sheets():
         print(f"Error setting up Google Sheets: {e}")
         return None
 
-def save_to_main_sheet(clipboard_type: str, date: str, driver_name: str, additional_info: Dict = None):
+def save_to_main_sheet(clipboard_type: str, date: str, operator_name: str, additional_info: Dict = None):
     """Save signup data to main Google Sheet"""
     if not GOOGLE_SHEETS_ENABLED:
         return
@@ -222,8 +222,8 @@ def save_to_main_sheet(clipboard_type: str, date: str, driver_name: str, additio
         row_data = [
             date,
             display_clipboard_type,
-            driver_name,
-            additional_info.get("driver_id", ""),
+            operator_name,
+            additional_info.get("operator_id", ""),
             additional_info.get("shift_time", ""),
             additional_info.get("work_choice", additional_info.get("work_interested", "")),
             additional_info.get("phone_number", ""),
@@ -233,7 +233,7 @@ def save_to_main_sheet(clipboard_type: str, date: str, driver_name: str, additio
         
         # Append to main sheet
         worksheet.append_row(row_data)
-        print(f"Successfully saved to Main Sheet: {clipboard_type} - {driver_name} - {date}")
+        print(f"Successfully saved to Main Sheet: {clipboard_type} - {operator_name} - {date}")
         
     except Exception as e:
         print(f"Error saving to Main Sheet: {e}")
@@ -311,7 +311,7 @@ def check_and_create_daily_sheet(target_date: str):
         print(f"Error checking/creating daily sheet: {e}")
         return None
 
-def add_to_daily_sheet(target_date: str, clipboard_type: str, driver_name: str, additional_info: Dict = None):
+def add_to_daily_sheet(target_date: str, clipboard_type: str, operator_name: str, additional_info: Dict = None):
     """Add signup to the appropriate daily sheet tab"""
     if not GOOGLE_SHEETS_ENABLED or not DAILY_SHEETS_ENABLED:
         return
@@ -345,8 +345,8 @@ def add_to_daily_sheet(target_date: str, clipboard_type: str, driver_name: str, 
         
         row_data = [
             target_date,
-            driver_name,
-            additional_info.get("driver_id", ""),
+            operator_name,
+            additional_info.get("operator_id", ""),
             additional_info.get("shift_time", ""),
             additional_info.get("work_choice", additional_info.get("work_interested", "")),
             additional_info.get("phone_number", ""),
@@ -356,7 +356,7 @@ def add_to_daily_sheet(target_date: str, clipboard_type: str, driver_name: str, 
         
         # Append to daily sheet
         worksheet.append_row(row_data)
-        print(f"Successfully added to daily sheet {tab_name}: {driver_name}")
+        print(f"Successfully added to daily sheet {tab_name}: {operator_name}")
         
     except Exception as e:
         print(f"Error adding to daily sheet: {e}")
@@ -415,14 +415,14 @@ def create_daily_sheet(target_date: str):
                     worksheet = daily_sheet.add_worksheet(title=tab_name, rows=100, cols=10)
                 
                 # Add headers
-                headers = ["Driver Name", "Driver ID", "Shift Time", "Work Interest", "Notes", "Signup Time"]
+                headers = ["operator Name", "operator ID", "Shift Time", "Work Interest", "Notes", "Signup Time"]
                 worksheet.append_row(headers)
                 
                 # Add data rows
                 for record in clipboard_records:
                     row_data = [
-                        record['Driver Name'],
-                        record['Driver ID'],
+                        record['operator Name'],
+                        record['operator ID'],
                         record['Shift Time'], 
                         record['Work Choice/Interest'],
                         record['Notes'],
@@ -450,13 +450,13 @@ def load_signups(clipboard_type: str, date: str) -> List[Dict]:
             return json.load(f)
     return []
 
-def save_signup(clipboard_type: str, date: str, driver_name: str, additional_info: Dict = None):
+def save_signup(clipboard_type: str, date: str, operator_name: str, additional_info: Dict = None):
     """Save a new signup to local JSON, Main Google Sheet, and Daily Sheet"""
     # Save to local JSON file (existing functionality)
     signups = load_signups(clipboard_type, date)
     
     new_signup = {
-        "driver_name": driver_name,
+        "operator_name": operator_name,
         "signup_time": now_eastern().isoformat(),
         "additional_info": additional_info or {}
     }
@@ -468,10 +468,10 @@ def save_signup(clipboard_type: str, date: str, driver_name: str, additional_inf
         json.dump(signups, f, indent=2)
     
     # Save to Main Google Sheet
-    save_to_main_sheet(clipboard_type, date, driver_name, additional_info)
+    save_to_main_sheet(clipboard_type, date, operator_name, additional_info)
     
     # Save to Daily Sheet (creates sheet if it doesn't exist)
-    add_to_daily_sheet(date, clipboard_type, driver_name, additional_info)
+    add_to_daily_sheet(date, clipboard_type, operator_name, additional_info)
 
 def get_work_dates(days: int = 31) -> List[str]:
     """Get available work dates from tomorrow (if before 11am) or day after tomorrow (if after 11am)"""
@@ -644,8 +644,8 @@ else:
                 phone_number = additional_info.get("phone_number", "")
                 
                 row_data = {
-                    "ID #": additional_info.get("driver_id", "Not provided"),
-                    "Driver Name": signup["driver_name"],
+                    "ID #": additional_info.get("operator_id", "Not provided"),
+                    "operator Name": signup["operator_name"],
                     "Choice of Work": work_choice
                 }
                 
@@ -662,8 +662,8 @@ else:
                 
                 signup_data.append({
                     "Shift": additional_info.get("shift_time", "Not specified"),
-                    "ID #": additional_info.get("driver_id", "Not provided"),
-                    "Driver Name": signup["driver_name"],
+                    "ID #": additional_info.get("operator_id", "Not provided"),
+                    "operator Name": signup["operator_name"],
                     "Work Interested IN": additional_info.get("work_interested", "Not specified")
                 })
         elif clipboard_type == "EXTRA_WORK":
@@ -674,8 +674,8 @@ else:
                 
                 signup_data.append({
                     "Shift": additional_info.get("shift_time", "Not specified"),
-                    "ID #": additional_info.get("driver_id", "Not provided"),
-                    "Driver Name": signup["driver_name"],
+                    "ID #": additional_info.get("operator_id", "Not provided"),
+                    "operator Name": signup["operator_name"],
                     "Work Interested IN": additional_info.get("work_interested", "Not specified")
                 })
         else:
@@ -683,7 +683,7 @@ else:
             signup_data = []
             for signup in current_signups:
                 row_data = {
-                    "Driver Name": signup["driver_name"],
+                    "operator Name": signup["operator_name"],
                     "Signup Time": datetime.fromisoformat(signup["signup_time"]).strftime("%I:%M %p")
                 }
                 # Add notes if they exist
@@ -701,7 +701,7 @@ else:
     if st.session_state.show_success:
         success_info = st.session_state.success_info
         st.success(f"✅ Your request has been successfully submitted!")
-        st.info(f"**{success_info['driver_name']}** signed up for **{success_info['clipboard_type']}** on **{success_info['formatted_date']}**")
+        st.info(f"**{success_info['operator_name']}** signed up for **{success_info['clipboard_type']}** on **{success_info['formatted_date']}**")
         
         # Show countdown and return to home
         placeholder = st.empty()
@@ -723,7 +723,7 @@ else:
     
     with st.form("signup_form", clear_on_submit=True):
         # Common fields for all clipboard types
-        driver_id = st.text_input(
+        operator_id = st.text_input(
             "ID #",
             placeholder="Enter your employee ID number...",
             help="Your employee identification number"
@@ -748,7 +748,7 @@ else:
                 help="Optional: Provide your phone number to be included on the call list"
             )
             additional_info = {
-                "driver_id": driver_id,
+                "operator_id": operator_id,
                 "work_choice": work_choice,
                 "phone_number": phone_number
             }
@@ -767,7 +767,7 @@ else:
             )
             additional_info = {
                 "shift_time": shift_time,
-                "driver_id": driver_id,
+                "operator_id": operator_id,
                 "work_interested": work_interested
             }
         elif clipboard_type == "EXTRA_WORK":
@@ -785,7 +785,7 @@ else:
             )
             additional_info = {
                 "shift_time": shift_time,
-                "driver_id": driver_id,
+                "operator_id": operator_id,
                 "work_interested": work_interested
             }
         else:
@@ -803,12 +803,12 @@ else:
             valid = True
             error_messages = []
             
-            if not driver_name.strip():
+            if not operator_name.strip():
                 error_messages.append("Please enter your name.")
                 valid = False
             
             if clipboard_type == "RDO":
-                if not driver_id.strip():
+                if not operator_id.strip():
                     error_messages.append("Please enter your ID number.")
                     valid = False
                 if not work_choice.strip():
@@ -816,7 +816,7 @@ else:
                     valid = False
             
             elif clipboard_type == "SPARE_WORK": 
-                if not driver_id.strip():
+                if not operator_id.strip():
                     error_messages.append("Please enter your ID number.")
                     valid = False
                 if not shift_time:
@@ -827,7 +827,7 @@ else:
                     valid = False
             
             elif clipboard_type == "EXTRA_WORK":
-                if not driver_id.strip():
+                if not operator_id.strip():
                     error_messages.append("Please enter your ID number.")
                     valid = False
                 if not shift_time:
@@ -843,7 +843,7 @@ else:
                 # Set success info in session state and trigger page refresh
                 st.session_state.show_success = True
                 st.session_state.success_info = {
-                    'driver_name': operator_name.strip(),
+                    'operator_name': operator_name.strip(),
                     'clipboard_type': clipboard_type.replace('_', ' ').title(),
                     'formatted_date': format_date_display(selected_date)
                 }
