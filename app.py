@@ -781,8 +781,7 @@ else:
             emp_status = ""
 
 
-        if emp_status:
-            st.info(f"Employee Status: {emp_status}")
+        # Employee Status info message removed for faster signup
 
         # Set operator_name from selected operator ID
         operator_name = default_name
