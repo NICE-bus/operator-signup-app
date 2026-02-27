@@ -107,7 +107,7 @@ st.markdown("""
         .stButton > button {
             font-size: 1rem !important;
             padding: 10px 10px !important;
-            min-height: 44px !important;
+            min-height: 70px !important;
             min-width: unset !important;
             border-radius: 8px !important;
         }
@@ -119,12 +119,12 @@ st.markdown("""
         }
         
         .stTextInput > div > div > input {
-            font-size: 1rem !important;
+            font-size: 1.2rem !important;
             padding: 10px !important;
         }
         
         .stSelectbox > div > div > div {
-            font-size: 1rem !important;
+            font-size: 1.2rem !important;
         }
         
         /* Stack columns vertically on mobile */
