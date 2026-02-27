@@ -351,17 +351,11 @@ def add_to_daily_sheet(target_date: str, clipboard_type: str, operator_name: str
         return
         
     try:
-        # Ensure daily sheet exists
-        daily_sheet_id = check_and_create_daily_sheet(target_date)
-        if not daily_sheet_id:
-            return
-            
+        # Directly open daily sheet by title (since all exist)
         client = setup_google_sheets()
         if not client:
             return
-            
-        # Open the daily sheet
-        daily_sheet = client.open_by_key(daily_sheet_id)
+        daily_sheet = client.open(target_date)
         
         # Map clipboard types to tab names
         clipboard_display_map = {
@@ -376,21 +370,28 @@ def add_to_daily_sheet(target_date: str, clipboard_type: str, operator_name: str
         # Prepare row data for daily sheet (excluding clipboard type since it's separated by tabs)
         signup_time = now_eastern().strftime("%Y-%m-%d %H:%M:%S")
         additional_info = additional_info or {}
-        
+
+        # Lookup Seniority from Operators sheet
+        _, operator_lookup, _ = get_operators_data()
+        operator_id = additional_info.get("operator_id", "")
+        seniority = ""
+        if operator_id and operator_id in operator_lookup:
+            seniority = operator_lookup[operator_id].get("Seniority", "")
+
+        # Assume Seniority column is always present; write row in correct order
         row_data = [
             target_date,
             operator_name,
-            additional_info.get("operator_id", ""),
+            operator_id,
+            seniority,
             additional_info.get("shift_time", ""),
             additional_info.get("work_choice", additional_info.get("work_interested", "")),
             additional_info.get("phone_number", ""),
             signup_time,
             additional_info.get("notes", "")
         ]
-        
-        # Append to daily sheet
         worksheet.append_row(row_data)
-        print(f"Successfully added to daily sheet {tab_name}: {operator_name}")
+        print(f"Successfully added to daily sheet {tab_name}: {operator_name} (Seniority: {seniority})")
         
     except Exception as e:
         print(f"Error adding to daily sheet: {e}")
