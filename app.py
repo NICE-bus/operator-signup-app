@@ -101,7 +101,7 @@ st.markdown("""
     /* Mobile portrait: compact buttons */
     @media screen and (max-width: 768px) {
         .main-header {
-            font-size: 1.6rem !important;
+            font-size: 3rem !important;
         }
         
         .stButton > button {
