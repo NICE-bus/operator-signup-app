@@ -680,7 +680,7 @@ else:
                 
                 row_data = {
                     "ID #": additional_info.get("operator_id", "Not provided"),
-                    "operator Name": signup["operator_name"],
+                    "Operator Name": signup["operator_name"],
                     "Choice of Work": work_choice
                 }
                 
@@ -698,8 +698,8 @@ else:
                 signup_data.append({
                     "Shift": additional_info.get("shift_time", "Not specified"),
                     "ID #": additional_info.get("operator_id", "Not provided"),
-                    "operator Name": signup["operator_name"],
-                    "Work Interested IN": additional_info.get("work_interested", "Not specified")
+                    "Operator Name": signup["operator_name"],
+                    "Work Interested In": additional_info.get("work_interested", "Not specified")
                 })
         elif clipboard_type == "EXTRA_WORK":
             # Extra Work-specific display
@@ -710,15 +710,15 @@ else:
                 signup_data.append({
                     "Shift": additional_info.get("shift_time", "Not specified"),
                     "ID #": additional_info.get("operator_id", "Not provided"),
-                    "operator Name": signup["operator_name"],
-                    "Work Interested IN": additional_info.get("work_interested", "Not specified")
+                    "Operator Name": signup["operator_name"],
+                    "Work Interested In": additional_info.get("work_interested", "Not specified")
                 })
         else:
             # Default display for other clipboard types
             signup_data = []
             for signup in current_signups:
                 row_data = {
-                    "operator Name": signup["operator_name"],
+                    "Operator Name": signup["operator_name"],
                     "Signup Time": datetime.fromisoformat(signup["signup_time"]).strftime("%I:%M %p")
                 }
                 # Add notes if they exist
