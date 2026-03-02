@@ -302,111 +302,37 @@ def save_to_main_sheet(clipboard_type: str, date: str, operator_name: str, addit
 
 def check_and_create_daily_sheet(target_date: str):
     """Check if daily sheet exists for date in scheduler folder, create if it doesn't"""
-    if not GOOGLE_SHEETS_ENABLED or not DAILY_SHEETS_ENABLED:
-        return None
-        
-    try:
-        client = setup_google_sheets()
-        if not client:
-            return None
-            
-        # Format date for sheet title to match your naming convention (YYYY-MM-DD)
-        daily_sheet_title = target_date  # Use the date directly (e.g., "2026-01-29")
-        
-        # Check if sheet already exists by trying to open it
-        try:
-            existing_sheet = client.open(daily_sheet_title)
-            print(f"Daily sheet already exists: {daily_sheet_title}")
-            return existing_sheet.id
-        except gspread.SpreadsheetNotFound:
-            # Sheet doesn't exist, create it
-            print(f"Creating new daily sheet: {daily_sheet_title}")
-            pass
-        
-        # Since you manually created the sheet, we'll skip the creation part and just try to open it
-        # Create new sheet directly in the scheduler folder (avoids service account storage quota)
-        # daily_sheet = client.create(daily_sheet_title, folder_id=SCHEDULER_FOLDER_ID)
-        print(f"Skipping sheet creation - using manually created sheet: {daily_sheet_title}")
-        
-        # Try to open the manually created sheet
-        try:
-            daily_sheet = client.open(daily_sheet_title)
-            print(f"Successfully opened manually created sheet: {daily_sheet_title}")
-        except gspread.SpreadsheetNotFound:
-            print(f"Could not find manually created sheet: {daily_sheet_title}")
-            return None
-        
-        print(f"Created daily sheet in scheduler folder: {daily_sheet_title}")
-        print(f"Sheet URL: https://docs.google.com/spreadsheets/d/{daily_sheet.id}")
-        
-        # Check if worksheets already exist, create them if they don't
-        existing_worksheets = [ws.title for ws in daily_sheet.worksheets()]
-        print(f"Existing worksheets: {existing_worksheets}")
-        
-        # Create three worksheets with headers (if they don't exist)
-        clipboard_types = {
-            "SPARE": "Spare Work",
-            "EXTRA": "Extra Work", 
-            "RDO": "RDO"
-        }
-        
-        for clipboard_key, tab_name in clipboard_types.items():
-            if tab_name not in existing_worksheets:
-                # Create worksheet
-                if len(existing_worksheets) == 0:
-                    # Use the default first sheet if no worksheets exist
-                    worksheet = daily_sheet.sheet1
-                    worksheet.update_title(tab_name)
-                else:
-                    worksheet = daily_sheet.add_worksheet(title=tab_name, rows=100, cols=10)
-                
-                # Add headers matching main sheet structure
-                headers = ["Date Requested", "Operator Name", "Operator ID", "Shift Time Requested", "Work Requested", "Phone #", "Signup Time", "Notes"]
-                worksheet.append_row(headers)
-                print(f"Created new worksheet: {tab_name}")
-            else:
-                print(f"Worksheet already exists: {tab_name}")
-        
-        return daily_sheet.id
-        
-    except Exception as e:
-        print(f"Error checking/creating daily sheet: {e}")
-        return None
+    # All daily sheets are pre-created; skip existence check and creation
+    return None
 
 def add_to_daily_sheet(target_date: str, clipboard_type: str, operator_name: str, additional_info: Dict = None):
     """Add signup to the appropriate daily sheet tab"""
     if not GOOGLE_SHEETS_ENABLED or not DAILY_SHEETS_ENABLED:
         return
-        
+
     try:
-        # Directly open daily sheet by title (since all exist)
+        # Directly open daily sheet by title (all sheets are pre-created)
         client = setup_google_sheets()
         if not client:
             return
         daily_sheet = client.open(target_date)
-        
-        # Map clipboard types to tab names
+
         clipboard_display_map = {
             "SPARE_WORK": "Spare Work",
-            "EXTRA_WORK": "Extra Work", 
+            "EXTRA_WORK": "Extra Work",
             "RDO": "RDO"
         }
-        
         tab_name = clipboard_display_map.get(clipboard_type, clipboard_type)
         worksheet = daily_sheet.worksheet(tab_name)
-        
-        # Prepare row data for daily sheet (excluding clipboard type since it's separated by tabs)
+
         signup_time = now_eastern().strftime("%Y-%m-%d %H:%M:%S")
         additional_info = additional_info or {}
 
         # Lookup Seniority from Operators sheet
         _, operator_lookup, _ = get_operators_data()
         operator_id = additional_info.get("operator_id", "")
-        seniority = ""
-        if operator_id and operator_id in operator_lookup:
-            seniority = operator_lookup[operator_id].get("Seniority", "")
+        seniority = operator_lookup.get(operator_id, {}).get("Seniority", "") if operator_id else ""
 
-        # Assume Seniority column is always present; write row in correct order
         row_data = [
             target_date,
             operator_name,
@@ -419,8 +345,8 @@ def add_to_daily_sheet(target_date: str, clipboard_type: str, operator_name: str
             additional_info.get("notes", "")
         ]
         worksheet.append_row(row_data)
-        print(f"Successfully added to daily sheet {tab_name}: {operator_name} (Seniority: {seniority})")
-        
+        # Removed print statements for speed
+
     except Exception as e:
         print(f"Error adding to daily sheet: {e}")
 
