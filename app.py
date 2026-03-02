@@ -98,50 +98,56 @@ st.markdown("""
         }
     }
     
-    /* Mobile portrait: compact buttons */
+    /* Mobile and Tablet (up to 768px wide) */
     @media screen and (max-width: 768px) {
         .main-header {
             font-size: 3rem !important;
         }
         
+        /* 1. Button Text Centering & Sizing */
         .stButton > button {
-            font-size: 1rem !important;
-            padding: 10px 10px !important;
-            min-height: 70px !important;
-            min-width: unset !important;
-            border-radius: 8px !important;
-        }
-        
-        div[data-testid="stForm"] .stButton > button {
-            font-size: 1.1rem !important;
-            padding: 12px 15px !important;
-            min-height: 50px !important;
-        }
-        
-        .stTextInput > div > div > input {
-            font-size: 1.2rem !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
             padding: 10px !important;
+            min-height: 70px !important;
+            width: 100% !important; /* Ensures buttons fill the column width */
+        }
+
+        /* Determines size of fonts on daily sheet buttons */
+        .stButton > button p {
+            font-size: 1.7rem !important; 
+            font-weight: 600 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.1 !important;
+            text-align: center !important;
         }
         
-        .stSelectbox > div > div > div {
-            font-size: 1.2rem !important;
-        }
-        
-        /* Stack columns vertically on mobile */
+        /* 2. Tighten the Vertical Spacing between stacked columns */
         [data-testid="stHorizontalBlock"] {
             flex-direction: column !important;
-            gap: 0.5rem !important;
+            gap: 0.75rem !important; /* Controls the space specifically between stacked buttons */
         }
         
         [data-testid="stHorizontalBlock"] > div {
             width: 100% !important;
-            flex: 1 1 100% !important;
-            min-width: 100% !important;
+            flex: none !important; /* Prevents columns from growing to fill "equal space" */
+            margin-bottom: 0 !important; /* Removes extra bottom margin from column divs */
         }
-        
-        /* Normalize all vertical spacing to match */
+
+        /* 3. Global Vertical Spacing */
         [data-testid="stVerticalBlock"] {
-            gap: 0.5rem !important;
+            gap: 0.75rem !important;
+        }
+
+        /* 4. Form Submit Adjustments */
+        div[data-testid="stForm"] .stButton > button {
+            min-height: 70px !important;
+        }
+
+        div[data-testid="stForm"] .stButton > button p {
+            font-size: 1.6rem !important;
         }
     }
 </style>""", unsafe_allow_html=True)
