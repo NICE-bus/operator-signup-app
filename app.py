@@ -39,6 +39,14 @@ st.markdown("""
         color: #1f4e79;
         margin-bottom: 1rem;
     }
+            
+    .sub-header {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1f4e79;
+        text-align: left;
+        margin-bottom: 1rem;
+    }
     
     /* Default button styling */
     .stButton > button {
@@ -102,6 +110,10 @@ st.markdown("""
     @media screen and (max-width: 768px) {
         .main-header {
             font-size: 3rem !important;
+        }
+        
+            .sub-header {
+            font-size: 2.2rem !important;
         }
         
         /* 1. Button Text Centering & Sizing */
@@ -572,7 +584,7 @@ if st.session_state.current_clipboard is None:
     print(f"DEBUG: On home page - Current clipboard: {st.session_state.current_clipboard}")
     print(f"DEBUG: Home page session state keys: {list(st.session_state.keys())}")
     
-    st.markdown("### Select a signup sheet:")
+    st.markdown('<h2 class="sub-header">Select a signup sheet:</h2>', unsafe_allow_html=True)
     
     # Tile-based layout with 3 equal columns
     col1, col2, col3 = st.columns(3)
@@ -603,7 +615,7 @@ if st.session_state.current_clipboard is None:
 
 # Date selection screen
 elif st.session_state.selected_date is None:
-    st.markdown(f"### 📅 Select date for {st.session_state.current_clipboard.replace('_', ' ').upper()}:")
+    st.markdown(f'<h2 class="sub-header">📅 Select date for {st.session_state.current_clipboard.replace("_", " ").upper()}:</h2>', unsafe_allow_html=True)
     
     # Back button
     if st.button("← Back to Clipboards", key="back_to_clipboards"):
@@ -613,7 +625,7 @@ elif st.session_state.selected_date is None:
     dates = get_work_dates(31)  # Show next 31 days starting tomorrow
     
     # Show first 14 days (2 weeks) prominently
-    st.markdown("#### 📅 Next 2 Weeks:")
+    st.markdown('<h2 class="sub-header">📅 Next 2 Weeks:</h2>', unsafe_allow_html=True)
     
     for i in range(0, min(14, len(dates)), 2):
         row_cols = st.columns(2)
@@ -656,7 +668,7 @@ else:
     clipboard_type = st.session_state.current_clipboard
     selected_date = st.session_state.selected_date
     
-    st.markdown(f"### 📝 {clipboard_type.replace('_', ' ').upper()} - {format_date_display(selected_date)}")
+    st.markdown(f'<h2 class="sub-header">📝 {clipboard_type.replace("_", " ").upper()} - {format_date_display(selected_date)}</h2>', unsafe_allow_html=True)
     
     # Back buttons
     col1, col2 = st.columns(2)
@@ -760,7 +772,7 @@ else:
         st.rerun()
     
     # Signup form
-    st.markdown("#### Add Your Signup:")
+    st.markdown("#### Add Your Signup:")   
     
 
 
