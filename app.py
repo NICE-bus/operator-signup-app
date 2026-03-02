@@ -39,6 +39,11 @@ st.markdown("""
         color: #1f4e79;
         margin-bottom: 1rem;
     }
+    /* Mobile markdown class for form questions */
+    .form-questions {
+        font-size: 1.3rem;
+        font-weight: 600;        
+    }
             
     .sub-header {
         font-size: 2rem;
@@ -114,6 +119,11 @@ st.markdown("""
         
             .sub-header {
             font-size: 2.2rem !important;
+        }            
+
+        .form-questions {
+            font-size: 1.7rem !important;
+            font-weight: 550 !important;
         }
         
         /* 1. Button Text Centering & Sizing */
@@ -668,7 +678,7 @@ else:
     clipboard_type = st.session_state.current_clipboard
     selected_date = st.session_state.selected_date
     
-    st.markdown(f'<h2 class="sub-header">📝 {clipboard_type.replace("_", " ").upper()} - {format_date_display(selected_date)}</h2>', unsafe_allow_html=True)
+    st.markdown(f"### 📝 {clipboard_type.replace('_', ' ').upper()} - {format_date_display(selected_date)}")
     
     # Back buttons
     col1, col2 = st.columns(2)
@@ -772,7 +782,7 @@ else:
         st.rerun()
     
     # Signup form
-    st.markdown("#### Add Your Signup:")   
+    st.markdown("#### Add Your Signup:")
     
 
 
@@ -780,12 +790,11 @@ else:
     operator_display_list, operator_lookup, display_to_id = get_operators_data()
 
     with st.form("signup_form", clear_on_submit=True):
-        # Operator dropdown (Active only)
+        st.markdown('<span class="form-questions">ID # - Operator Name</span>', unsafe_allow_html=True)
         operator_display = st.selectbox(
-            "ID # - Operator Name",
+            "Type your ID or name to find yourself in the list:",
             options=["Select your ID..."] + operator_display_list,
-            index=0,
-            help="Select your employee ID number and name"
+            index=0
         )
 
         # Map display string back to ID
@@ -809,15 +818,15 @@ else:
         additional_info = {}
 
         if clipboard_type == "RDO":
+            st.markdown('<span class="form-questions">Choice of Work</span>', unsafe_allow_html=True)
             work_choice = st.text_input(
-                "Choice of Work",
-                placeholder="Enter your preferred work assignment...",
-                help="Specify your preferred work assignment (e.g., AM Spare, PM Spare, Extra Board, etc.)"
+                "Review the available work assignments on the TV.",
+                placeholder="Enter requested work assignment...",
             )
+            st.markdown('<span class="form-questions">Phone #</span>', unsafe_allow_html=True)
             phone_number = st.text_input(
-                "Phone # (Optional)",
-                placeholder="Enter phone number if you'd like to be on a call list...",
-                help="Optional: Provide your phone number to be included on the call list"
+                "Optional - Only provide if you want to be included on the call list.",
+                placeholder="Enter phone number..."
             )
             additional_info = {
                 "operator_id": operator_id if operator_id != "Select your ID..." else "",
@@ -825,15 +834,16 @@ else:
                 "phone_number": phone_number
             }
         elif clipboard_type == "SPARE_WORK":
+            st.markdown('<span class="form-questions">AM/PM</span>', unsafe_allow_html=True)
             shift_time = st.radio(
-                "AM/PM",
+                "Must select one",
                 options=["AM", "PM", "Either"],
                 index=None,
-                help="Select when you're available to work",
                 horizontal=True
             )
+            st.markdown('<span class="form-questions">Work Interested In</span>', unsafe_allow_html=True)
             work_interested = st.text_input(
-                "Work Interested in",
+                "Review the available work assignments on the TV.",
                 placeholder="Enter any work you're interested in...",
                 help="Specify the type of spare work or assignment you're interested in"
             )
@@ -843,15 +853,16 @@ else:
                 "work_interested": work_interested
             }
         elif clipboard_type == "EXTRA_WORK":
+            st.markdown('<span class="form-questions">AM/PM</span>', unsafe_allow_html=True)
             shift_time = st.radio(
-                "AM/PM",
+                "Must select one",
                 options=["AM", "PM", "Either"],
                 index=None,
-                help="Select when you're available to work",
                 horizontal=True
             )
+            st.markdown('<span class="form-questions">Work Interested In</span>', unsafe_allow_html=True)
             work_interested = st.text_input(
-                "Work Interested in",
+                "Review the available work assignments on the TV.",
                 placeholder="Enter any work you're interested in...",
                 help="Specify the type of work or assignment you're interested in"
             )
@@ -861,8 +872,9 @@ else:
                 "work_interested": work_interested
             }
         else:
+            st.markdown('<span class="form-questions">Notes (Optional)</span>', unsafe_allow_html=True)
             notes = st.text_area(
-                "Notes (Optional)",
+                "",
                 placeholder="Any additional information...",
                 help="Optional notes or special requirements"
             )
