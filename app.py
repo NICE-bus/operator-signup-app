@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List
 from zoneinfo import ZoneInfo
 import pandas as pd
+import smtplib
+from email.mime.text import MIMEText
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -186,6 +188,9 @@ MAIN_SHEET_ID = "1HP6B7FAIquGi8yTjb35L2Er9fxt13Prw9dIAmXAnvkE"  # Main database 
 CREDENTIALS_FILE = "service_account_credentials.json"  # Your service account file
 DAILY_SHEETS_ENABLED = True  # Re-enabled for testing with manually created sheets
 SCHEDULER_FOLDER_ID = "1dYd5Lk0O2x8-huNXfslRHpjWVEMu3L2q"  # Scheduler sheets folder
+
+# Email Configuration
+EMAIL_ENABLED = True  # Sends confirmation emails to operators after signup
 
 # Operators Sheet Configuration
 OPERATORS_SHEET_ID = "1shAyat8-g_CAF22I6shcVnSxHz3OQxMtcfZ7EmjlNWE"
@@ -439,6 +444,44 @@ def load_signups(clipboard_type: str, date: str) -> List[Dict]:
             return json.load(f)
     return []
 
+def send_confirmation_email(operator_id: str, clipboard_type: str, date: str):
+    """Send confirmation email to operator after signup"""
+    _, operator_lookup, _ = get_operators_data()
+    op_row = operator_lookup.get(operator_id, {})
+    email_address = str(op_row.get("Email Address", "")).strip()
+
+    if not email_address:
+        print(f"No email address found for operator {operator_id}")
+        return
+
+    clipboard_display = clipboard_type.replace('_', ' ').title()
+    subject = f"Requested work received for {date}"
+    body = (
+        f"Hello, you requested to work {clipboard_display} on {date}.\n\n"
+        f"If this is incorrect, please let a supervisor know."
+    )
+
+    if not EMAIL_ENABLED:
+        print(f"[EMAIL DRY-RUN] To: {email_address} | Subject: {subject} | Body: {body}")
+        return
+
+    try:
+        sender = st.secrets["email"]["sender"]
+        app_password = st.secrets["email"]["app_password"]
+
+        msg = MIMEText(body)
+        msg["Subject"] = subject
+        msg["From"] = sender
+        msg["To"] = email_address
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender, app_password)
+            server.sendmail(sender, email_address, msg.as_string())
+        print(f"Confirmation email sent to {email_address}")
+    except Exception as e:
+        print(f"Error sending confirmation email: {e}")
+
+
 def save_signup(clipboard_type: str, date: str, operator_name: str, additional_info: Dict = None):
     """Save a new signup to local JSON, Main Google Sheet, and Daily Sheet"""
     # Save to local JSON file (existing functionality)
@@ -459,8 +502,11 @@ def save_signup(clipboard_type: str, date: str, operator_name: str, additional_i
     # Save to Main Google Sheet
     save_to_main_sheet(clipboard_type, date, operator_name, additional_info)
     
-    # Save to Daily Sheet (creates sheet if it doesn't exist)
+    # Save to Daily Sheet 
     add_to_daily_sheet(date, clipboard_type, operator_name, additional_info)
+
+    # Send confirmation email
+    send_confirmation_email(additional_info.get("operator_id", "") if additional_info else "", clipboard_type, date)
 
 def get_work_dates(days: int = 31) -> List[str]:
     """Get available work dates from tomorrow (if before 11am) or day after tomorrow (if after 11am)"""
@@ -865,3 +911,7 @@ else:
 # Footer
 st.markdown("---")
 st.markdown("**NICE Operator Signup System** • Questions? Contact your supervisor")
+
+
+
+
