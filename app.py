@@ -665,72 +665,72 @@ else:
             st.rerun()
     
     # Show current signups
-    current_signups = load_signups(clipboard_type, selected_date)
+    # current_signups = load_signups(clipboard_type, selected_date)
     
-    if current_signups:
-        st.markdown("#### Current Signups:")
+    # if current_signups:
+    #     st.markdown("#### Current Signups:")
         
-        if clipboard_type == "RDO":
-            # RDO-specific display with ID, Name, and Choice of Work
-            signup_data = []
-            for signup in current_signups:
-                additional_info = signup.get("additional_info", {})
-                work_choice = additional_info.get("work_choice", "Not specified")
-                phone_number = additional_info.get("phone_number", "")
+    #     if clipboard_type == "RDO":
+    #         # RDO-specific display with ID, Name, and Choice of Work
+    #         signup_data = []
+    #         for signup in current_signups:
+    #             additional_info = signup.get("additional_info", {})
+    #             work_choice = additional_info.get("work_choice", "Not specified")
+    #             phone_number = additional_info.get("phone_number", "")
                 
-                row_data = {
-                    "ID #": additional_info.get("operator_id", "Not provided"),
-                    "Operator Name": signup["operator_name"],
-                    "Choice of Work": work_choice
-                }
+    #             row_data = {
+    #                 "ID #": additional_info.get("operator_id", "Not provided"),
+    #                 "Operator Name": signup["operator_name"],
+    #                 "Choice of Work": work_choice
+    #             }
                 
-                # Only add phone column if someone has provided a phone number
-                if phone_number:
-                    row_data["Phone #"] = phone_number
+    #             # Only add phone column if someone has provided a phone number
+    #             if phone_number:
+    #                 row_data["Phone #"] = phone_number
                 
-                signup_data.append(row_data)
-        elif clipboard_type == "SPARE_WORK":
-            # Spare Work-specific display
-            signup_data = []
-            for signup in current_signups:
-                additional_info = signup.get("additional_info", {})
+    #             signup_data.append(row_data)
+    #     elif clipboard_type == "SPARE_WORK":
+    #         # Spare Work-specific display
+    #         signup_data = []
+    #         for signup in current_signups:
+    #             additional_info = signup.get("additional_info", {})
                 
-                signup_data.append({
-                    "Shift": additional_info.get("shift_time", "Not specified"),
-                    "ID #": additional_info.get("operator_id", "Not provided"),
-                    "Operator Name": signup["operator_name"],
-                    "Work Interested In": additional_info.get("work_interested", "Not specified")
-                })
-        elif clipboard_type == "EXTRA_WORK":
-            # Extra Work-specific display
-            signup_data = []
-            for signup in current_signups:
-                additional_info = signup.get("additional_info", {})
+    #             signup_data.append({
+    #                 "Shift": additional_info.get("shift_time", "Not specified"),
+    #                 "ID #": additional_info.get("operator_id", "Not provided"),
+    #                 "Operator Name": signup["operator_name"],
+    #                 "Work Interested In": additional_info.get("work_interested", "Not specified")
+    #             })
+    #     elif clipboard_type == "EXTRA_WORK":
+    #         # Extra Work-specific display
+    #         signup_data = []
+    #         for signup in current_signups:
+    #             additional_info = signup.get("additional_info", {})
                 
-                signup_data.append({
-                    "Shift": additional_info.get("shift_time", "Not specified"),
-                    "ID #": additional_info.get("operator_id", "Not provided"),
-                    "Operator Name": signup["operator_name"],
-                    "Work Interested In": additional_info.get("work_interested", "Not specified")
-                })
-        else:
-            # Default display for other clipboard types
-            signup_data = []
-            for signup in current_signups:
-                row_data = {
-                    "Operator Name": signup["operator_name"],
-                    "Signup Time": datetime.fromisoformat(signup["signup_time"]).strftime("%I:%M %p")
-                }
-                # Add notes if they exist
-                additional_info = signup.get("additional_info", {})
-                if additional_info.get("notes"):
-                    row_data["Notes"] = additional_info["notes"]
-                signup_data.append(row_data)
+    #             signup_data.append({
+    #                 "Shift": additional_info.get("shift_time", "Not specified"),
+    #                 "ID #": additional_info.get("operator_id", "Not provided"),
+    #                 "Operator Name": signup["operator_name"],
+    #                 "Work Interested In": additional_info.get("work_interested", "Not specified")
+    #             })
+    #     else:
+    #         # Default display for other clipboard types
+    #         signup_data = []
+    #         for signup in current_signups:
+    #             row_data = {
+    #                 "Operator Name": signup["operator_name"],
+    #                 "Signup Time": datetime.fromisoformat(signup["signup_time"]).strftime("%I:%M %p")
+    #             }
+    #             # Add notes if they exist
+    #             additional_info = signup.get("additional_info", {})
+    #             if additional_info.get("notes"):
+    #                 row_data["Notes"] = additional_info["notes"]
+    #             signup_data.append(row_data)
         
-        signup_df = pd.DataFrame(signup_data)
-        st.dataframe(signup_df, width='stretch', hide_index=True)
-    else:
-        st.info("No signups yet for this date.")
+    #     signup_df = pd.DataFrame(signup_data)
+    #     st.dataframe(signup_df, width='stretch', hide_index=True)
+    # else:
+    #     st.info("No signups yet for this date.")
     
     # Check if we should show success message and countdown AFTER the table
     if st.session_state.show_success:
