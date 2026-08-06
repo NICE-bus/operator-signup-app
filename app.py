@@ -557,6 +557,10 @@ if 'show_success' not in st.session_state:
     st.session_state.show_success = False
 if 'success_info' not in st.session_state:
     st.session_state.success_info = {}
+if 'is_submitting' not in st.session_state:
+    st.session_state.is_submitting = False
+if 'pending_submission' not in st.session_state:
+    st.session_state.pending_submission = None
 
 # Main app header
 st.markdown('<h1 class="main-header">🚌 Operator Signup System</h1>', unsafe_allow_html=True)
@@ -852,7 +856,9 @@ else:
             )
             additional_info = {"notes": notes} if notes else {}
         
-        submitted = st.form_submit_button("✅ Sign Me Up!", width='stretch')
+        submitting = st.session_state.get("is_submitting", False)
+        submit_label = "Submitting your request..." if submitting else "✅ Sign Me Up!"
+        submitted = st.form_submit_button(submit_label, width='stretch', disabled=submitting)
         
         if submitted:
             # Validation based on clipboard type
@@ -893,20 +899,36 @@ else:
                     valid = False
             
             if valid:
-
-                save_signup(clipboard_type, selected_date, operator_name.strip(), additional_info)
-                
-                # Set success info in session state and trigger page refresh
-                st.session_state.show_success = True
-                st.session_state.success_info = {
-                    'operator_name': operator_name.strip(),
-                    'clipboard_type': clipboard_type.replace('_', ' ').title(),
-                    'formatted_date': format_date_display(selected_date)
+                st.session_state.is_submitting = True
+                st.session_state.pending_submission = {
+                    "clipboard_type": clipboard_type,
+                    "selected_date": selected_date,
+                    "operator_name": operator_name.strip(),
+                    "additional_info": additional_info
                 }
                 st.rerun()
             else:
                 for error in error_messages:
                     st.error(error)
+        elif submitting and st.session_state.get("pending_submission"):
+            st.info("Submitting your request...")
+            with st.spinner("Submitting your request..."):
+                pending = st.session_state.pending_submission
+                save_signup(
+                    pending["clipboard_type"],
+                    pending["selected_date"],
+                    pending["operator_name"],
+                    pending["additional_info"]
+                )
+            st.session_state.is_submitting = False
+            st.session_state.pending_submission = None
+            st.session_state.show_success = True
+            st.session_state.success_info = {
+                'operator_name': pending["operator_name"],
+                'clipboard_type': pending["clipboard_type"].replace('_', ' ').title(),
+                'formatted_date': format_date_display(pending["selected_date"])
+            }
+            st.rerun()
 
 # Footer
 st.markdown("---")
