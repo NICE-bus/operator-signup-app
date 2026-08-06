@@ -28,7 +28,8 @@ st.set_page_config(
     page_title="Operator Signup System",
     page_icon="🚌",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
+    menu_items={}
 )
 
 # Custom CSS for tablet-friendly interface
@@ -177,17 +178,28 @@ st.markdown("""
 
     /* Landscape tablets such as Galaxy Tab S7 FE */
     @media screen and (min-width: 1024px) and (orientation: landscape) {
+        .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 1rem !important;
+        }
+
         .main-header {
             font-size: 2.2rem !important;
-            margin-bottom: 0.5rem !important;
+            margin-top: 0 !important;
+            margin-bottom: 0.35rem !important;
         }
 
         .sub-header {
             font-size: 1.8rem !important;
+            margin-bottom: 0.5rem !important;
         }
 
         .form-questions {
             font-size: 1.15rem !important;
+        }
+
+        [data-testid="stVerticalBlock"] {
+            gap: 0.4rem !important;
         }
 
         .stButton > button {
