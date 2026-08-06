@@ -196,6 +196,19 @@ EMAIL_ENABLED = True  # Sends confirmation emails to operators after signup
 OPERATORS_SHEET_ID = "1shAyat8-g_CAF22I6shcVnSxHz3OQxMtcfZ7EmjlNWE"
 OPERATORS_SHEET_TAB = 0  # Use first worksheet/tab
 
+def _get_sheet_value(row: Dict, *possible_keys: str) -> str:
+    """Retrieve a value from a sheet row using a few likely header variations."""
+    for key in possible_keys:
+        if key in row:
+            return str(row.get(key, "")).strip()
+
+    normalized_targets = {str(key).strip().lower() for key in possible_keys}
+    for actual_key, value in row.items():
+        if str(actual_key).strip().lower() in normalized_targets:
+            return str(value).strip()
+
+    return ""
+
 @st.cache_data(show_spinner=False)
 def get_operators_data():
     """Fetch operator data from Operators Google Sheet, only Active employees."""
@@ -211,10 +224,10 @@ def get_operators_data():
         id_lookup = {}
         display_to_id = {}
         for row in records:
-            op_id = str(row.get("ID #", "")).strip()
-            status = str(row.get("Employee Status", "")).strip().lower()
-            first = str(row.get("First Name", "")).strip()
-            last = str(row.get("Last Name", "")).strip()
+            op_id = _get_sheet_value(row, "ID #", "ID#")
+            status = _get_sheet_value(row, "Employee Status", "Employee Status ", "Employee status").strip().lower()
+            first = _get_sheet_value(row, "First Name", "First name")
+            last = _get_sheet_value(row, "Last Name", "Last name")
             if op_id and status == "active":
                 display = f"{op_id} - {first} {last}"
                 display_list.append(display)
