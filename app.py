@@ -35,6 +35,16 @@ st.set_page_config(
 # Custom CSS for tablet-friendly interface
 st.markdown("""
 <style>
+    /* Remove the default Streamlit toolbar/header bar so the app feels like a full-screen tablet experience */
+    [data-testid="stHeader"] {
+        display: none !important;
+    }
+
+    .block-container {
+        padding-top: 0.5rem !important;
+        padding-bottom: 1rem !important;
+    }
+
     .main-header {
         text-align: center;
         font-size: 2.5rem;
