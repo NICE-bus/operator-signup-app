@@ -10,11 +10,11 @@ import os
 from datetime import datetime, timedelta
 from typing import Dict, List
 from zoneinfo import ZoneInfo
-import pandas as pd
 import smtplib
 from email.mime.text import MIMEText
 import gspread
 from google.oauth2.service_account import Credentials
+import threading
 
 # Timezone configuration - all times in Eastern
 EASTERN = ZoneInfo("America/New_York")
@@ -174,6 +174,43 @@ st.markdown("""
             font-size: 1.6rem !important;
         }
     }
+
+    /* Landscape tablets such as Galaxy Tab S7 FE */
+    @media screen and (min-width: 1024px) and (orientation: landscape) {
+        .main-header {
+            font-size: 2.2rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+
+        .sub-header {
+            font-size: 1.8rem !important;
+        }
+
+        .form-questions {
+            font-size: 1.15rem !important;
+        }
+
+        .stButton > button {
+            font-size: 1.1rem !important;
+            padding: 12px 18px !important;
+            min-height: 64px !important;
+        }
+
+        div[data-testid="stForm"] .stButton > button {
+            font-size: 1.2rem !important;
+            padding: 16px 24px !important;
+            min-height: 72px !important;
+        }
+
+        .stTextInput > div > div > input {
+            font-size: 1.05rem !important;
+            padding: 12px !important;
+        }
+
+        .stSelectbox > div > div > div {
+            font-size: 1.05rem !important;
+        }
+    }
 </style>""", unsafe_allow_html=True)
 
 # Data file paths
@@ -195,6 +232,18 @@ EMAIL_ENABLED = True  # Sends confirmation emails to operators after signup
 # Operators Sheet Configuration
 OPERATORS_SHEET_ID = "1shAyat8-g_CAF22I6shcVnSxHz3OQxMtcfZ7EmjlNWE"
 OPERATORS_SHEET_TAB = 0  # Use first worksheet/tab
+
+CLIPBOARD_DISPLAY_MAP = {
+    "SPARE_WORK": "SPARE",
+    "EXTRA_WORK": "EXTRA",
+    "RDO": "RDO",
+}
+
+DAILY_SHEET_TAB_MAP = {
+    "SPARE_WORK": "Spare Work",
+    "EXTRA_WORK": "Extra Work",
+    "RDO": "RDO",
+}
 
 def _get_sheet_value(row: Dict, *possible_keys: str) -> str:
     """Retrieve a value from a sheet row using a few likely header variations."""
@@ -238,8 +287,9 @@ def get_operators_data():
         print(f"Error loading operators sheet: {e}")
         return [], {}, {}
 
+@st.cache_resource(show_spinner=False)
 def setup_google_sheets():
-    """Setup Google Sheets connection - supports local file or Streamlit Cloud Secrets"""
+    """Setup Google Sheets connection once and reuse it across requests."""
     try:
         # Define the scope
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -265,13 +315,13 @@ def setup_google_sheets():
         print(f"Error setting up Google Sheets: {e}")
         return None
 
-def save_to_main_sheet(clipboard_type: str, date: str, operator_name: str, additional_info: Dict = None):
+def save_to_main_sheet(clipboard_type: str, date: str, operator_name: str, additional_info: Dict = None, client=None, signup_time=None):
     """Save signup data to main Google Sheet"""
     if not GOOGLE_SHEETS_ENABLED:
         return
     
     try:
-        client = setup_google_sheets()
+        client = client or setup_google_sheets()
         if not client:
             return
         
@@ -287,16 +337,10 @@ def save_to_main_sheet(clipboard_type: str, date: str, operator_name: str, addit
             headers = ["Date Requested", "Clipboard Type", "Operator Name", "Operator ID", "Shift Time Requested", "Work Requested", "Phone #", "Signup Time", "Notes"]
             worksheet.append_row(headers)
         
-        # Convert clipboard type to display format for Google Sheets
-        clipboard_display_map = {
-            "SPARE_WORK": "SPARE",
-            "EXTRA_WORK": "EXTRA", 
-            "RDO": "RDO"
-        }
-        display_clipboard_type = clipboard_display_map.get(clipboard_type, clipboard_type)
+        display_clipboard_type = CLIPBOARD_DISPLAY_MAP.get(clipboard_type, clipboard_type)
         
         # Prepare row data for main sheet
-        signup_time = now_eastern().strftime("%Y-%m-%d %H:%M:%S")
+        signup_time = signup_time or now_eastern().strftime("%Y-%m-%d %H:%M:%S")
         additional_info = additional_info or {}
         
         row_data = [
@@ -318,36 +362,27 @@ def save_to_main_sheet(clipboard_type: str, date: str, operator_name: str, addit
     except Exception as e:
         print(f"Error saving to Main Sheet: {e}")
 
-def check_and_create_daily_sheet(target_date: str):
-    """Check if daily sheet exists for date in scheduler folder, create if it doesn't"""
-    # All daily sheets are pre-created; skip existence check and creation
-    return None
-
-def add_to_daily_sheet(target_date: str, clipboard_type: str, operator_name: str, additional_info: Dict = None):
+def add_to_daily_sheet(target_date: str, clipboard_type: str, operator_name: str, additional_info: Dict = None, client=None, operator_lookup=None, signup_time=None):
     """Add signup to the appropriate daily sheet tab"""
     if not GOOGLE_SHEETS_ENABLED or not DAILY_SHEETS_ENABLED:
         return
 
     try:
         # Directly open daily sheet by title (all sheets are pre-created)
-        client = setup_google_sheets()
+        client = client or setup_google_sheets()
         if not client:
             return
         daily_sheet = client.open(target_date)
 
-        clipboard_display_map = {
-            "SPARE_WORK": "Spare Work",
-            "EXTRA_WORK": "Extra Work",
-            "RDO": "RDO"
-        }
-        tab_name = clipboard_display_map.get(clipboard_type, clipboard_type)
+        tab_name = DAILY_SHEET_TAB_MAP.get(clipboard_type, clipboard_type)
         worksheet = daily_sheet.worksheet(tab_name)
 
-        signup_time = now_eastern().strftime("%Y-%m-%d %H:%M:%S")
+        signup_time = signup_time or now_eastern().strftime("%Y-%m-%d %H:%M:%S")
         additional_info = additional_info or {}
 
-        # Lookup Seniority from Operators sheet
-        _, operator_lookup, _ = get_operators_data()
+        # Lookup Seniority from Operators sheet when not already provided
+        if operator_lookup is None:
+            _, operator_lookup, _ = get_operators_data()
         operator_id = additional_info.get("operator_id", "")
         seniority = operator_lookup.get(operator_id, {}).get("Seniority", "") if operator_id else ""
 
@@ -457,9 +492,10 @@ def load_signups(clipboard_type: str, date: str) -> List[Dict]:
             return json.load(f)
     return []
 
-def send_confirmation_email(operator_id: str, clipboard_type: str, date: str):
+def send_confirmation_email(operator_id: str, clipboard_type: str, date: str, operator_lookup=None):
     """Send confirmation email to operator after signup"""
-    _, operator_lookup, _ = get_operators_data()
+    if operator_lookup is None:
+        _, operator_lookup, _ = get_operators_data()
     op_row = operator_lookup.get(operator_id, {})
     email_address = str(op_row.get("Email Address", "")).strip()
 
@@ -495,14 +531,27 @@ def send_confirmation_email(operator_id: str, clipboard_type: str, date: str):
         print(f"Error sending confirmation email: {e}")
 
 
+def queue_confirmation_email(operator_id: str, clipboard_type: str, date: str, operator_lookup=None):
+    """Send the confirmation email in a background thread so submission stays fast."""
+    thread = threading.Thread(
+        target=send_confirmation_email,
+        args=(operator_id, clipboard_type, date),
+        kwargs={"operator_lookup": operator_lookup},
+        daemon=True,
+    )
+    thread.start()
+
+
 def save_signup(clipboard_type: str, date: str, operator_name: str, additional_info: Dict = None):
     """Save a new signup to local JSON, Main Google Sheet, and Daily Sheet"""
+    signup_timestamp = now_eastern()
+
     # Save to local JSON file (existing functionality)
     signups = load_signups(clipboard_type, date)
     
     new_signup = {
         "operator_name": operator_name,
-        "signup_time": now_eastern().isoformat(),
+        "signup_time": signup_timestamp.isoformat(),
         "additional_info": additional_info or {}
     }
     
@@ -511,15 +560,19 @@ def save_signup(clipboard_type: str, date: str, operator_name: str, additional_i
     file_path = get_signup_file(clipboard_type, date)
     with open(file_path, 'w') as f:
         json.dump(signups, f, indent=2)
+
+    client = setup_google_sheets()
+    _, operator_lookup, _ = get_operators_data()
+    signup_time = signup_timestamp.strftime("%Y-%m-%d %H:%M:%S")
     
     # Save to Main Google Sheet
-    save_to_main_sheet(clipboard_type, date, operator_name, additional_info)
+    save_to_main_sheet(clipboard_type, date, operator_name, additional_info, client=client, signup_time=signup_time)
     
     # Save to Daily Sheet 
-    add_to_daily_sheet(date, clipboard_type, operator_name, additional_info)
+    add_to_daily_sheet(date, clipboard_type, operator_name, additional_info, client=client, operator_lookup=operator_lookup, signup_time=signup_time)
 
-    # Send confirmation email
-    send_confirmation_email(additional_info.get("operator_id", "") if additional_info else "", clipboard_type, date)
+    # Send confirmation email in the background so form submission stays fast
+    queue_confirmation_email(additional_info.get("operator_id", "") if additional_info else "", clipboard_type, date, operator_lookup=operator_lookup)
 
 def get_work_dates(days: int = 31) -> List[str]:
     """Get available work dates from tomorrow (if before 11am) or day after tomorrow (if after 11am)"""
@@ -543,8 +596,8 @@ def get_work_dates(days: int = 31) -> List[str]:
 def format_date_display(date_str: str) -> str:
     """Format date for display with day name"""
     date = datetime.strptime(date_str, "%Y-%m-%d").date()
-    today = now_eastern().date()
     now = now_eastern()
+    today = now.date()
     
     # Show time-sensitive labeling for the first available day
     if now.hour < 11:
