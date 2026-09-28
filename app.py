@@ -280,7 +280,7 @@ def _get_sheet_value(row: Dict, *possible_keys: str) -> str:
 
     return ""
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=60)  # auto-refresh from the sheet at least once a minute
 def get_operators_data():
     """Fetch operator data from Operators Google Sheet, only Active employees."""
     try:
@@ -659,6 +659,11 @@ if st.session_state.current_clipboard is None:
     print(f"DEBUG: Home page session state keys: {list(st.session_state.keys())}")
     
     st.markdown('<h2 class="sub-header">Select a signup sheet:</h2>', unsafe_allow_html=True)
+    
+    # Manual override in case an operator was just added/updated in the sheet and the 5-min cache hasn't rolled yet
+    if st.button("🔄 Refresh Operator List", key="refresh_operators"):
+        get_operators_data.clear()
+        st.rerun()
     
     # Tile-based layout with 3 equal columns
     col1, col2, col3 = st.columns(3)
